@@ -6,14 +6,25 @@ export const useValidation = () => {
   const validateSurvey = (surveyData) => {
     const newErrors = {};
 
+    // Survey ID validation
     if (!surveyData.surveyId || surveyData.surveyId.trim() === '') {
       newErrors.surveyId = 'Survey ID is required';
+    } else if (!/^[A-Za-z0-9_]+$/.test(surveyData.surveyId)) {
+      newErrors.surveyId = 'Survey ID must contain only alphanumeric characters and underscores (no spaces)';
     }
+    
+    // Survey Name validation
     if (!surveyData.surveyName || surveyData.surveyName.trim() === '') {
       newErrors.surveyName = 'Survey Name is required';
+    } else if (surveyData.surveyName.length > 99) {
+      newErrors.surveyName = 'Survey Name must not exceed 99 characters';
     }
+    
+    // Survey Description validation
     if (!surveyData.surveyDescription || surveyData.surveyDescription.trim() === '') {
       newErrors.surveyDescription = 'Survey Description is required';
+    } else if (surveyData.surveyDescription.length > 256) {
+      newErrors.surveyDescription = 'Survey Description must not exceed 256 characters';
     }
 
     // Validate date format

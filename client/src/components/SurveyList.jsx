@@ -42,15 +42,39 @@ const SurveyList = () => {
     return <div className="loading">Loading surveys...</div>;
   }
 
+  const activeSurveys = surveys.filter(s => s.isActive === 'Yes').length;
+  const totalSurveys = surveys.length;
+
   return (
     <div className="survey-list-container">
+      <div className="dashboard-header">
+        <h1>FMB Survey Builder Dashboard</h1>
+        <p>Create and manage surveys with automatic Excel export functionality</p>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-value">{totalSurveys}</div>
+          <div className="stat-label">Total Surveys</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{activeSurveys}</div>
+          <div className="stat-label">Active Surveys</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-value">{totalSurveys - activeSurveys}</div>
+          <div className="stat-label">Inactive Surveys</div>
+        </div>
+      </div>
+
       <div className="list-header">
         <h2>Surveys</h2>
         <button 
           className="btn btn-primary"
           onClick={() => navigate('/surveys/new')}
         >
-          Create New Survey
+          ✚ Create New Survey
         </button>
       </div>
 
@@ -59,6 +83,12 @@ const SurveyList = () => {
       {surveys.length === 0 ? (
         <div className="empty-state">
           <p>No surveys found. Create your first survey to get started.</p>
+          <button 
+            className="btn btn-primary"
+            onClick={() => navigate('/surveys/new')}
+          >
+            Create New Survey
+          </button>
         </div>
       ) : (
         <div className="survey-grid">
@@ -72,13 +102,14 @@ const SurveyList = () => {
               <div className="survey-meta">
                 <span className="badge">{survey.isActive === 'Yes' ? 'Active' : 'Inactive'}</span>
                 <span className="badge">{survey.public === 'Yes' ? 'Public' : 'Private'}</span>
+                {survey.mode && <span className="badge badge-mode">{survey.mode}</span>}
               </div>
               <div className="survey-actions">
                 <button 
                   className="btn btn-secondary btn-sm"
                   onClick={() => navigate(`/surveys/${survey.surveyId}/questions`)}
                 >
-                  Manage Questions
+                  Questions
                 </button>
                 <button 
                   className="btn btn-secondary btn-sm"

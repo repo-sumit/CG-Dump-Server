@@ -13,15 +13,25 @@ class Validator {
   validateSurvey(surveyData) {
     const errors = [];
 
-    // Required fields
+    // Survey ID validation
     if (!surveyData.surveyId || surveyData.surveyId.trim() === '') {
       errors.push('Survey ID is required');
+    } else if (!/^[A-Za-z0-9_]+$/.test(surveyData.surveyId)) {
+      errors.push('Survey ID must contain only alphanumeric characters and underscores (no spaces)');
     }
+    
+    // Survey Name validation
     if (!surveyData.surveyName || surveyData.surveyName.trim() === '') {
       errors.push('Survey Name is required');
+    } else if (surveyData.surveyName.length > 99) {
+      errors.push('Survey Name must not exceed 99 characters');
     }
+    
+    // Survey Description validation
     if (!surveyData.surveyDescription || surveyData.surveyDescription.trim() === '') {
       errors.push('Survey Description is required');
+    } else if (surveyData.surveyDescription.length > 256) {
+      errors.push('Survey Description must not exceed 256 characters');
     }
 
     // Validate Yes/No fields

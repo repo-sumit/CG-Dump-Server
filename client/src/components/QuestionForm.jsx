@@ -89,9 +89,16 @@ const QuestionForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const updates = { [name]: value };
+    
+    // Auto-fill mediumInEnglish when medium changes
+    if (name === 'medium') {
+      updates.mediumInEnglish = value;
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      ...updates
     }));
     if (errors[name]) {
       setErrors(prev => {
@@ -215,14 +222,21 @@ const QuestionForm = () => {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="medium">Medium (Language)</label>
-              <input
-                type="text"
+              <select
                 id="medium"
                 name="medium"
                 value={formData.medium}
                 onChange={handleChange}
-                placeholder="e.g., English, Hindi"
-              />
+              >
+                <option value="">Select Medium</option>
+                {survey.availableMediums && (typeof survey.availableMediums === 'string' 
+                  ? survey.availableMediums.split(',').filter(m => m.trim())
+                  : survey.availableMediums
+                ).map(medium => (
+                  <option key={medium} value={medium.trim()}>{medium.trim()}</option>
+                ))}
+              </select>
+              <small>Select from survey's available languages</small>
             </div>
 
             <div className="form-group">
@@ -233,7 +247,9 @@ const QuestionForm = () => {
                 name="mediumInEnglish"
                 value={formData.mediumInEnglish}
                 onChange={handleChange}
-                placeholder="e.g., English"
+                placeholder="Auto-filled from Medium"
+                readOnly
+                style={{ backgroundColor: '#f0f0f0' }}
               />
             </div>
           </div>

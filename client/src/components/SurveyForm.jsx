@@ -13,14 +13,14 @@ const SurveyForm = () => {
     surveyId: '',
     surveyName: '',
     surveyDescription: '',
-    availableMediums: '',
+    availableMediums: [],
     hierarchicalAccessLevel: '',
-    public: 'No',
-    inSchool: 'No',
-    acceptMultipleEntries: 'No',
+    public: 'Yes',
+    inSchool: 'Yes',
+    acceptMultipleEntries: 'Yes',
     launchDate: '',
     closeDate: '',
-    mode: 'None',
+    mode: 'New Data',
     visibleOnReportBot: 'No',
     isActive: 'Yes',
     downloadResponse: 'No',
@@ -42,7 +42,15 @@ const SurveyForm = () => {
   const loadSurvey = async () => {
     try {
       const data = await surveyAPI.getById(surveyId);
+      // Convert availableMediums string to array if needed
+      if (typeof data.availableMediums === 'string') {
+        data.availableMediums = data.availableMediums ? data.availableMediums.split(',') : [];
+      }
       setFormData(data);
+      // Set hierarchy levels for display
+      if (data.hierarchicalAccessLevel) {
+        setHierarchyLevels(data.hierarchicalAccessLevel.split(',').filter(l => l.trim()));
+      }
     } catch (err) {
       alert('Failed to load survey');
       navigate('/');
@@ -65,6 +73,44 @@ const SurveyForm = () => {
     }
   };
 
+  const handleMediumsChange = (e) => {
+    const options = Array.from(e.target.selectedOptions, option => option.value);
+    setFormData(prev => ({
+      ...prev,
+      availableMediums: options
+    }));
+  };
+
+  const [hierarchyInput, setHierarchyInput] = useState('');
+  const [hierarchyLevels, setHierarchyLevels] = useState([]);
+
+  const handleAddHierarchyLevel = () => {
+    if (hierarchyInput && /^\d+$/.test(hierarchyInput)) {
+      if (!hierarchyLevels.includes(hierarchyInput)) {
+        const newLevels = [...hierarchyLevels, hierarchyInput];
+        setHierarchyLevels(newLevels);
+        setFormData(prev => ({
+          ...prev,
+          hierarchicalAccessLevel: newLevels.join(',')
+        }));
+        setHierarchyInput('');
+      } else {
+        alert('This hierarchy level already exists');
+      }
+    } else {
+      alert('Please enter a valid numeric value');
+    }
+  };
+
+  const handleRemoveHierarchyLevel = (level) => {
+    const newLevels = hierarchyLevels.filter(l => l !== level);
+    setHierarchyLevels(newLevels);
+    setFormData(prev => ({
+      ...prev,
+      hierarchicalAccessLevel: newLevels.join(',')
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError(null);
@@ -75,14 +121,24 @@ const SurveyForm = () => {
 
     try {
       setLoading(true);
+      // Convert availableMediums array to comma-separated string for backend
+      const dataToSend = {
+        ...formData,
+        availableMediums: Array.isArray(formData.availableMediums) 
+          ? formData.availableMediums.join(',') 
+          : formData.availableMediums
+      };
+      
       if (isEdit) {
-        await surveyAPI.update(surveyId, formData);
+        await surveyAPI.update(surveyId, dataToSend);
         alert('Survey updated successfully');
+        navigate('/');
       } else {
-        await surveyAPI.create(formData);
+        const response = await surveyAPI.create(dataToSend);
         alert('Survey created successfully');
+        // Redirect to Question Master after creating survey
+        navigate(`/surveys/${response.surveyId}/questions`);
       }
-      navigate('/');
     } catch (err) {
       const errorMsg = err.response?.data?.errors 
         ? err.response.data.errors.join(', ')
@@ -141,8 +197,10 @@ const SurveyForm = () => {
               onChange={handleChange}
               placeholder="e.g., Secondary Schools Infrastructure Survey"
               className={errors.surveyName ? 'error' : ''}
+              maxLength="99"
             />
             {errors.surveyName && <span className="error-text">{errors.surveyName}</span>}
+            <small>{formData.surveyName.length}/99 characters</small>
           </div>
 
           <div className="form-group">
@@ -157,34 +215,86 @@ const SurveyForm = () => {
               rows="4"
               placeholder="Describe the purpose of this survey"
               className={errors.surveyDescription ? 'error' : ''}
+              maxLength="256"
             />
             {errors.surveyDescription && <span className="error-text">{errors.surveyDescription}</span>}
+            <small>{formData.surveyDescription.length}/256 characters</small>
           </div>
 
           <div className="form-group">
             <label htmlFor="availableMediums">Available Mediums (Languages)</label>
-            <input
-              type="text"
+            <select
               id="availableMediums"
-              name="availableMediums"
+              multiple
               value={formData.availableMediums}
-              onChange={handleChange}
-              placeholder="e.g., English,Hindi"
-            />
-            <small>Comma-separated list of languages</small>
+              onChange={handleMediumsChange}
+              size="8"
+              style={{ minHeight: '120px' }}
+            >
+              <option value="English">English</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Gujarati">Gujarati</option>
+              <option value="Marathi">Marathi</option>
+              <option value="Tamil">Tamil</option>
+              <option value="Telugu">Telugu</option>
+              <option value="Bengali">Bengali</option>
+              <option value="Bodo">Bodo</option>
+            </select>
+            <small>Hold Ctrl/Cmd to select multiple languages</small>
           </div>
 
           <div className="form-group">
             <label htmlFor="hierarchicalAccessLevel">Hierarchical Access Level</label>
-            <input
-              type="text"
-              id="hierarchicalAccessLevel"
-              name="hierarchicalAccessLevel"
-              value={formData.hierarchicalAccessLevel}
-              onChange={handleChange}
-              placeholder="e.g., 22, 23, 24, 25"
-            />
-            <small>Comma-separated numbers</small>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <input
+                type="text"
+                value={hierarchyInput}
+                onChange={(e) => setHierarchyInput(e.target.value)}
+                placeholder="Enter numeric value (e.g., 12)"
+                style={{ flex: 1 }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddHierarchyLevel();
+                  }
+                }}
+              />
+              <button 
+                type="button" 
+                className="btn btn-secondary"
+                onClick={handleAddHierarchyLevel}
+              >
+                Add Level
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {hierarchyLevels.map(level => (
+                <span key={level} style={{ 
+                  padding: '0.25rem 0.75rem', 
+                  backgroundColor: '#e0e0e0', 
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  {level}
+                  <button 
+                    type="button"
+                    onClick={() => handleRemoveHierarchyLevel(level)}
+                    style={{ 
+                      border: 'none', 
+                      background: 'none', 
+                      cursor: 'pointer',
+                      fontSize: '1.2rem',
+                      lineHeight: '1'
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <small>Numeric values only, no duplicates allowed</small>
           </div>
         </div>
 

@@ -85,8 +85,8 @@ const QuestionList = () => {
     <div className="question-list-container">
       <div className="list-header">
         <div>
-          <h2>Questions for {survey.surveyName}</h2>
-          <p className="survey-id-display">Survey ID: {survey.surveyId}</p>
+          <h2>Question Master</h2>
+          <p className="survey-id-display">Survey: {survey.surveyName} (ID: {survey.surveyId})</p>
         </div>
         <div className="header-actions">
           <button 
