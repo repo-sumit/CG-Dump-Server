@@ -51,10 +51,8 @@ export const useValidation = () => {
       }
     }
 
-    // Hierarchical Access Level validation
-    if (!surveyData.hierarchicalAccessLevel || surveyData.hierarchicalAccessLevel.trim() === '') {
-      newErrors.hierarchicalAccessLevel = MESSAGES.REQUIRED('Hierarchical Access Level');
-    } else {
+    // Hierarchical Access Level validation (optional field)
+    if (surveyData.hierarchicalAccessLevel && surveyData.hierarchicalAccessLevel.trim() !== '') {
       const levels = surveyData.hierarchicalAccessLevel.split(',').map(l => l.trim()).filter(l => l);
       
       // Check all are numeric

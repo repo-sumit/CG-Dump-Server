@@ -65,48 +65,47 @@ router.post('/', upload.single('file'), async (req, res) => {
       if (records.length > 0) {
         const firstRecord = records[0];
         if (firstRecord['Survey ID'] || firstRecord['surveyId']) {
-          surveyData = records.map(normalizeKeys);
+          surveyData = records.map((record, index) => {
+            const normalized = normalizeKeys(record);
+            normalized._excelRow = index + 2; // +2 for header row and 0-index
+            normalized._sheetName = 'CSV';
+            return normalized;
+          });
         } else if (firstRecord['Question ID'] || firstRecord['questionId']) {
-          questionData = records.map(normalizeKeys);
+          questionData = records.map((record, index) => {
+            const normalized = normalizeKeys(record);
+            normalized._excelRow = index + 2; // +2 for header row and 0-index
+            normalized._sheetName = 'CSV';
+            return normalized;
+          });
         }
       }
     } else if (fileExt === '.xlsx' || fileExt === '.xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(req.file.buffer);
 
-      // Check for SurveyMaster sheet
-      const surveySheet = workbook.getWorksheet('SurveyMaster') || 
-                          workbook.getWorksheet('Survey Master') ||
-                          workbook.getWorksheet('Survey');
+      // Check for SurveyMaster sheet (case insensitive, various formats)
+      const surveySheet = workbook.worksheets.find(ws => 
+        ws.name.toLowerCase().replace(/\s+/g, '') === 'surveymaster' ||
+        ws.name.toLowerCase().replace(/\s+/g, '') === 'survey'
+      );
       
       if (surveySheet) {
-        surveyData = parseExcelSheet(surveySheet);
+        surveyData = parseExcelSheet(surveySheet, surveySheet.name);
       }
 
-      // Check for QuestionMaster sheet
-      const questionSheet = workbook.getWorksheet('QuestionMaster') || 
-                            workbook.getWorksheet('Question Master') ||
-                            workbook.getWorksheet('Question');
+      // Check for QuestionMaster sheet (case insensitive, various formats)
+      const questionSheet = workbook.worksheets.find(ws => 
+        ws.name.toLowerCase().replace(/\s+/g, '') === 'questionmaster' ||
+        ws.name.toLowerCase().replace(/\s+/g, '') === 'question'
+      );
       
       if (questionSheet) {
-        questionData = parseExcelSheet(questionSheet);
+        questionData = parseExcelSheet(questionSheet, questionSheet.name);
       }
 
-      // If no named sheets found, use first sheet
-      if (surveyData.length === 0 && questionData.length === 0 && workbook.worksheets.length > 0) {
-        const firstSheet = workbook.worksheets[0];
-        const data = parseExcelSheet(firstSheet);
-        
-        // Determine data type based on columns
-        if (data.length > 0) {
-          const firstRecord = data[0];
-          if (firstRecord.surveyId || firstRecord['Survey ID']) {
-            surveyData = data;
-          } else if (firstRecord.questionId || firstRecord['Question ID']) {
-            questionData = data;
-          }
-        }
-      }
+      // Ignore Access sheet and Designation mapping tabs as per requirements
+      // These sheets will not be processed or validated
     }
 
     // Get existing data for cross-validation
@@ -120,6 +119,16 @@ router.post('/', upload.single('file'), async (req, res) => {
       if (surveyData.length > 0) {
         totalRows += surveyData.length;
         const surveyErrors = validationEngine.validateBulkSurveys(surveyData);
+        // Update errors with Excel row numbers if available
+        surveyErrors.forEach(error => {
+          const record = surveyData[error.row - 2]; // error.row is already +2 from array index
+          if (record && record._excelRow) {
+            error.row = record._excelRow; // Use actual Excel row number
+          }
+          if (record && record._sheetName) {
+            error.sheet = record._sheetName; // Use actual sheet name
+          }
+        });
         allErrors = allErrors.concat(surveyErrors);
       }
     }
@@ -128,6 +137,16 @@ router.post('/', upload.single('file'), async (req, res) => {
       if (questionData.length > 0) {
         totalRows += questionData.length;
         const questionErrors = validationEngine.validateBulkQuestions(questionData, store.surveys);
+        // Update errors with Excel row numbers if available
+        questionErrors.forEach(error => {
+          const record = questionData[error.row - 2]; // error.row is already +2 from array index
+          if (record && record._excelRow) {
+            error.row = record._excelRow; // Use actual Excel row number
+          }
+          if (record && record._sheetName) {
+            error.sheet = record._sheetName; // Use actual sheet name
+          }
+        });
         allErrors = allErrors.concat(questionErrors);
       }
     }
@@ -158,7 +177,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 /**
  * Parse Excel sheet to array of objects
  */
-function parseExcelSheet(sheet) {
+function parseExcelSheet(sheet, sheetName) {
   const data = [];
   const headers = [];
 
@@ -173,16 +192,23 @@ function parseExcelSheet(sheet) {
     if (rowNumber === 1) return; // Skip header row
 
     const record = {};
+    let hasData = false;
     row.eachCell((cell, colNumber) => {
       const header = headers[colNumber];
       if (header) {
         record[header] = cell.value;
+        if (cell.value !== null && cell.value !== undefined && cell.value !== '') {
+          hasData = true;
+        }
       }
     });
 
-    // Only add non-empty rows
-    if (Object.keys(record).length > 0) {
-      data.push(normalizeKeys(record));
+    // Only add non-empty rows, and include the Excel row number and sheet name
+    if (hasData) {
+      const normalized = normalizeKeys(record);
+      normalized._excelRow = rowNumber; // Track the Excel row number
+      normalized._sheetName = sheetName; // Track the sheet name
+      data.push(normalized);
     }
   });
 

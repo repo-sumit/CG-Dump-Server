@@ -132,9 +132,26 @@ const SurveyForm = () => {
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
+      
+      // Auto-set time based on field type
+      let hours, minutes, seconds;
+      if (field === 'launchDate') {
+        // Launch Date: auto set to 00:00:00
+        hours = '00';
+        minutes = '00';
+        seconds = '00';
+      } else if (field === 'closeDate') {
+        // Close Date: auto set to 23:59:00
+        hours = '23';
+        minutes = '59';
+        seconds = '00';
+      } else {
+        // For any other date field, use current time
+        hours = String(date.getHours()).padStart(2, '0');
+        minutes = String(date.getMinutes()).padStart(2, '0');
+        seconds = String(date.getSeconds()).padStart(2, '0');
+      }
+      
       const formatted = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
       
       setFormData(prev => ({
@@ -619,7 +636,6 @@ const SurveyForm = () => {
               !formData.surveyDescription ||
               !formData.availableMediums || 
               formData.availableMediums.length === 0 ||
-              !formData.hierarchicalAccessLevel ||
               Object.keys(errors).length > 0
             }
           >

@@ -66,7 +66,7 @@ class ValidationEngine {
         message: `Available Mediums must be from: ${AVAILABLE_MEDIUMS.join(', ')}`
       },
       hierarchicalAccessLevel: {
-        type: 'required',
+        type: 'optional',
         custom: 'hierarchicalAccessLevel',
         message: 'Hierarchical Access Level must be numeric values (1-7), comma-separated, no duplicates'
       },
