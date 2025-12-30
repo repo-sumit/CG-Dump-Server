@@ -1,5 +1,19 @@
 const ExcelJS = require('exceljs');
 
+// Language mapping between English names and native scripts
+const LANGUAGE_MAPPINGS = {
+  'English': 'English',
+  'Hindi': 'हिन्दी',
+  'Bengali': 'বাংলা',
+  'Assamese': 'অসমীয়া',
+  'Bodo': 'बड़ो',
+  'Gujarati': 'ગુજરાતી',
+  'Marathi': 'मराठी',
+  'Tamil': 'தமிழ்',
+  'Telugu': 'తెలుగు',
+  'Punjabi': 'ਪੰਜਾਬੀ'
+};
+
 class ExcelGenerator {
   async generateExcel(survey, questions) {
     const workbook = new ExcelJS.Workbook();
@@ -7,10 +21,14 @@ class ExcelGenerator {
     // Sheet 1: Survey Master
     this.createSurveyMasterSheet(workbook, survey);
 
-    // Sheet 2: Question Master
-    this.createQuestionMasterSheet(workbook, questions);
+    // Sheet 2: Question Master (with multi-language duplication)
+    this.createQuestionMasterSheet(workbook, survey, questions);
 
     return workbook;
+  }
+  
+  getNativeScript(englishName) {
+    return LANGUAGE_MAPPINGS[englishName] || englishName;
   }
 
   createSurveyMasterSheet(workbook, survey) {
@@ -61,7 +79,7 @@ class ExcelGenerator {
     });
   }
 
-  createQuestionMasterSheet(workbook, questions) {
+  createQuestionMasterSheet(workbook, survey, questions) {
     const sheet = workbook.addWorksheet('Question Master');
 
     // Define all 84 columns in exact order as per specification
@@ -85,11 +103,11 @@ class ExcelGenerator {
       { header: 'Question_Media_Link', key: 'questionMediaLink', width: 30 },
       { header: 'Question_Media_Type', key: 'questionMediaType', width: 20 },
       { header: 'Question Description', key: 'questionDescription', width: 50 },
-      { header: 'Question Description_in_english', key: 'questionDescriptionInEnglish', width: 50 }
+      { header: 'Question Description', key: 'questionDescriptionDuplicate', width: 50 }
     ];
 
-    // Add 20 options with regional, English, and Children columns
-    for (let i = 1; i <= 20; i++) {
+    // Add 15 options with regional, English, and Children columns
+    for (let i = 1; i <= 15; i++) {
       columns.push({ header: `Option_${i}`, key: `option${i}`, width: 30 });
       columns.push({ header: `Option_${i}_in_English`, key: `option${i}InEnglish`, width: 30 });
       columns.push({ header: `Option${i}Children`, key: `option${i}Children`, width: 20 });
@@ -101,45 +119,75 @@ class ExcelGenerator {
 
     sheet.columns = columns;
 
-    // Add question data
+    // Parse available mediums from survey
+    const surveyLanguages = survey.availableMediums 
+      ? (typeof survey.availableMediums === 'string' 
+          ? survey.availableMediums.split(',').map(l => l.trim()).filter(l => l)
+          : survey.availableMediums)
+      : ['English'];
+
+    // Add question data with multi-language duplication
     questions.forEach(question => {
-      const row = {
-        surveyId: question.surveyId || '',
-        medium: question.medium || '',
-        mediumInEnglish: question.mediumInEnglish || '',
-        questionId: question.questionId || '',
-        questionType: question.questionType || '',
-        isDynamic: question.isDynamic || 'No',
-        questionDescriptionOptional: question.questionDescriptionOptional || '',
-        maxValue: question.maxValue || '',
-        minValue: question.minValue || '',
-        isMandatory: question.isMandatory || 'No',
-        tableHeaderValue: question.tableHeaderValue || '',
-        tableQuestionValue: question.tableQuestionValue || '',
-        sourceQuestion: question.sourceQuestion || '',
-        textInputType: question.textInputType || 'None',
-        textLimitCharacters: question.textLimitCharacters || '',
-        mode: question.mode || 'None',
-        questionMediaLink: question.questionMediaLink || '',
-        questionMediaType: question.questionMediaType || 'None',
-        questionDescription: question.questionDescription || '',
-        questionDescriptionInEnglish: question.questionDescriptionInEnglish || ''
-      };
-
-      // Add options (regional, English, and children)
-      for (let i = 1; i <= 20; i++) {
-        const option = question.options && question.options[i - 1];
-        row[`option${i}`] = option?.text || '';
-        row[`option${i}InEnglish`] = option?.textInEnglish || '';
-        row[`option${i}Children`] = option?.children || '';
+      // If question has translations, use them; otherwise duplicate for each survey language
+      if (question.translations && Object.keys(question.translations).length > 0) {
+        // New format: question with translations object
+        const translationLanguages = Object.keys(question.translations);
+        
+        translationLanguages.forEach(lang => {
+          const translation = question.translations[lang];
+          const row = this.buildQuestionRow(question, lang, translation, survey.surveyId);
+          sheet.addRow(row);
+        });
+      } else {
+        // Old format or single language: duplicate for each survey language
+        surveyLanguages.forEach(lang => {
+          const row = this.buildQuestionRow(question, lang, question, survey.surveyId);
+          sheet.addRow(row);
+        });
       }
-
-      row.correctAnswerOptional = question.correctAnswerOptional || '';
-      row.childrenQuestions = question.childrenQuestions || '';
-      row.outcomeDescription = question.outcomeDescription || '';
-
-      sheet.addRow(row);
     });
+  }
+  
+  buildQuestionRow(question, language, translationData, surveyId) {
+    const nativeScript = this.getNativeScript(language);
+    
+    const row = {
+      surveyId: surveyId || question.surveyId || '',
+      medium: nativeScript,
+      mediumInEnglish: language,
+      questionId: question.questionId || '',
+      questionType: question.questionType || '',
+      isDynamic: question.isDynamic || 'No',
+      questionDescriptionOptional: question.questionDescriptionOptional || '',
+      maxValue: question.maxValue || '',
+      minValue: question.minValue || '',
+      isMandatory: question.isMandatory || 'No',
+      tableHeaderValue: translationData.tableHeaderValue || question.tableHeaderValue || '',
+      tableQuestionValue: translationData.tableQuestionValue || question.tableQuestionValue || '',
+      sourceQuestion: question.sourceQuestion || '',
+      textInputType: question.textInputType || 'None',
+      textLimitCharacters: question.textLimitCharacters || '',
+      mode: question.mode || 'None',
+      questionMediaLink: (question.questionMediaType === 'None' || question.questionMediaType === '') ? '' : (question.questionMediaLink || ''),
+      questionMediaType: question.questionMediaType || 'None',
+      questionDescription: translationData.questionDescription || question.questionDescription || '',
+      questionDescriptionDuplicate: translationData.questionDescription || question.questionDescription || ''
+    };
+
+    // Add options (regional, English, and children)
+    const options = translationData.options || question.options || [];
+    for (let i = 1; i <= 15; i++) {
+      const option = options[i - 1];
+      row[`option${i}`] = option?.text || '';
+      row[`option${i}InEnglish`] = option?.textInEnglish || option?.text || '';
+      row[`option${i}Children`] = option?.children || '';
+    }
+
+    row.correctAnswerOptional = question.correctAnswerOptional || '';
+    row.childrenQuestions = question.childrenQuestions || '';
+    row.outcomeDescription = question.outcomeDescription || '';
+
+    return row;
   }
 }
 

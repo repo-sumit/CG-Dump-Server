@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { questionAPI, surveyAPI } from '../services/api';
 import { useValidation } from '../hooks/useValidation';
 import { questionTypes, textInputTypes, questionMediaTypes, yesNoOptions, getFieldsForQuestionType } from '../schemas/questionTypeSchema';
+import TranslationPanel from './TranslationPanel';
 
 const QuestionForm = () => {
   const navigate = useNavigate();
@@ -14,32 +15,27 @@ const QuestionForm = () => {
   const [formData, setFormData] = useState({
     questionId: '',
     questionType: '',
-    medium: 'English',
-    mediumInEnglish: 'English',
     isDynamic: 'No',
     questionDescriptionOptional: '',
     maxValue: '',
     minValue: '',
     isMandatory: 'Yes',
-    tableHeaderValue: '',
-    tableQuestionValue: '',
     sourceQuestion: '',
     textInputType: 'None',
     textLimitCharacters: '',
     mode: 'None',
     questionMediaLink: '',
     questionMediaType: 'None',
-    questionDescription: '',
-    questionDescriptionInEnglish: '',
-    options: [],
     correctAnswerOptional: '',
     childrenQuestions: '',
-    outcomeDescription: ''
+    outcomeDescription: '',
+    translations: {} // New field for multi-language support
   });
 
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [fieldConfig, setFieldConfig] = useState({});
+  const [surveyLanguages, setSurveyLanguages] = useState(['English']);
 
   useEffect(() => {
     loadSurvey();
@@ -55,19 +51,55 @@ const QuestionForm = () => {
       setFieldConfig(config);
       
       // Auto-set values based on question type constraints
+      const updates = {};
       if (config.textInputTypeValue) {
-        setFormData(prev => ({ ...prev, textInputType: config.textInputTypeValue }));
+        updates.textInputType = config.textInputTypeValue;
       }
       if (config.questionMediaTypeValue) {
-        setFormData(prev => ({ ...prev, questionMediaType: config.questionMediaTypeValue }));
+        updates.questionMediaType = config.questionMediaTypeValue;
+      }
+      if (config.isDynamic) {
+        updates.isDynamic = config.isDynamic;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        setFormData(prev => ({ ...prev, ...updates }));
       }
     }
   }, [formData.questionType]);
+  
+  // Clear questionMediaLink when questionMediaType is None
+  useEffect(() => {
+    if (formData.questionMediaType === 'None' && formData.questionMediaLink) {
+      setFormData(prev => ({ ...prev, questionMediaLink: '' }));
+    }
+  }, [formData.questionMediaType, formData.questionMediaLink]);
 
   const loadSurvey = async () => {
     try {
       const data = await surveyAPI.getById(surveyId);
       setSurvey(data);
+      
+      // Parse available languages from survey
+      const languages = typeof data.availableMediums === 'string' 
+        ? data.availableMediums.split(',').map(l => l.trim()).filter(l => l)
+        : (data.availableMediums || ['English']);
+      
+      setSurveyLanguages(languages);
+      
+      // Initialize translations for all languages if creating new question
+      if (!isEdit) {
+        const initialTranslations = {};
+        languages.forEach(lang => {
+          initialTranslations[lang] = {
+            questionDescription: '',
+            options: [],
+            tableHeaderValue: '',
+            tableQuestionValue: ''
+          };
+        });
+        setFormData(prev => ({ ...prev, translations: initialTranslations }));
+      }
     } catch (err) {
       alert('Failed to load survey');
       navigate('/');
@@ -79,6 +111,23 @@ const QuestionForm = () => {
       const questions = await questionAPI.getAll(surveyId);
       const question = questions.find(q => q.questionId === questionId);
       if (question) {
+        // If question doesn't have translations, create them from old format
+        if (!question.translations) {
+          const languages = surveyLanguages.length > 0 ? surveyLanguages : ['English'];
+          const translations = {};
+          
+          languages.forEach(lang => {
+            translations[lang] = {
+              questionDescription: question.questionDescription || '',
+              options: question.options || [],
+              tableHeaderValue: question.tableHeaderValue || '',
+              tableQuestionValue: question.tableQuestionValue || ''
+            };
+          });
+          
+          question.translations = translations;
+        }
+        
         setFormData(question);
       }
     } catch (err) {
@@ -89,16 +138,9 @@ const QuestionForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const updates = { [name]: value };
-    
-    // Auto-fill mediumInEnglish when medium changes
-    if (name === 'medium') {
-      updates.mediumInEnglish = value;
-    }
-    
     setFormData(prev => ({
       ...prev,
-      ...updates
+      [name]: value
     }));
     if (errors[name]) {
       setErrors(prev => {
@@ -109,30 +151,51 @@ const QuestionForm = () => {
     }
   };
 
-  const handleOptionChange = (index, field, value) => {
-    const newOptions = [...formData.options];
-    if (!newOptions[index]) {
-      newOptions[index] = { text: '', textInEnglish: '', children: '' };
-    }
-    newOptions[index][field] = value;
-    setFormData(prev => ({ ...prev, options: newOptions }));
-  };
-
-  const addOption = () => {
+  const handleTranslationsChange = (updatedTranslations) => {
     setFormData(prev => ({
       ...prev,
-      options: [...prev.options, { text: '', textInEnglish: '', children: '' }]
+      translations: updatedTranslations
     }));
-  };
-
-  const removeOption = (index) => {
-    const newOptions = formData.options.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, options: newOptions }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError(null);
+
+    // Validate that all languages have required translations
+    let hasAllTranslations = true;
+    let missingLanguages = [];
+    
+    surveyLanguages.forEach(lang => {
+      const translation = formData.translations[lang];
+      if (!translation || !translation.questionDescription) {
+        hasAllTranslations = false;
+        missingLanguages.push(lang);
+      }
+      
+      if (fieldConfig.showTableFields) {
+        if (!translation?.tableHeaderValue || !translation?.tableQuestionValue) {
+          hasAllTranslations = false;
+          if (!missingLanguages.includes(lang)) {
+            missingLanguages.push(lang);
+          }
+        }
+      }
+      
+      if (fieldConfig.showOptions) {
+        if (!translation?.options || translation.options.length < 2) {
+          hasAllTranslations = false;
+          if (!missingLanguages.includes(lang)) {
+            missingLanguages.push(lang);
+          }
+        }
+      }
+    });
+    
+    if (!hasAllTranslations) {
+      setSubmitError(`Missing required translations for: ${missingLanguages.join(', ')}`);
+      return;
+    }
 
     if (!validateQuestion(formData, formData.questionType)) {
       return;
@@ -219,69 +282,6 @@ const QuestionForm = () => {
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="medium">Medium (Language)</label>
-              <select
-                id="medium"
-                name="medium"
-                value={formData.medium}
-                onChange={handleChange}
-              >
-                <option value="">Select Medium</option>
-                {survey.availableMediums && (typeof survey.availableMediums === 'string' 
-                  ? survey.availableMediums.split(',').filter(m => m.trim())
-                  : survey.availableMediums
-                ).map(medium => (
-                  <option key={medium} value={medium.trim()}>{medium.trim()}</option>
-                ))}
-              </select>
-              <small>Select from survey's available languages</small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="mediumInEnglish">Medium in English</label>
-              <input
-                type="text"
-                id="mediumInEnglish"
-                name="mediumInEnglish"
-                value={formData.mediumInEnglish}
-                onChange={handleChange}
-                placeholder="Auto-filled from Medium"
-                readOnly
-                style={{ backgroundColor: '#f0f0f0' }}
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="questionDescription">
-              Question Description <span className="required">*</span>
-            </label>
-            <textarea
-              id="questionDescription"
-              name="questionDescription"
-              value={formData.questionDescription}
-              onChange={handleChange}
-              rows="3"
-              placeholder="Enter the question text in regional language"
-              className={errors.questionDescription ? 'error' : ''}
-            />
-            {errors.questionDescription && <span className="error-text">{errors.questionDescription}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="questionDescriptionInEnglish">Question Description in English</label>
-            <textarea
-              id="questionDescriptionInEnglish"
-              name="questionDescriptionInEnglish"
-              value={formData.questionDescriptionInEnglish}
-              onChange={handleChange}
-              rows="3"
-              placeholder="Enter the question text in English"
-            />
-          </div>
-
           <div className="form-group">
             <label htmlFor="questionDescriptionOptional">Question Description Optional</label>
             <input
@@ -314,107 +314,17 @@ const QuestionForm = () => {
           </div>
         </div>
 
-        {/* Table Fields for Tabular question types */}
-        {fieldConfig.showTableFields && (
+        {/* Multi-Language Translations */}
+        {formData.questionType && surveyLanguages.length > 0 && (
           <div className="form-section">
-            <h3>Table Configuration</h3>
-            
-            <div className="form-group">
-              <label htmlFor="tableHeaderValue">
-                Table Header Value <span className="required">*</span>
-              </label>
-              <input
-                type="text"
-                id="tableHeaderValue"
-                name="tableHeaderValue"
-                value={formData.tableHeaderValue}
-                onChange={handleChange}
-                placeholder="e.g., Classroom category,Classroom count (in number)"
-                className={errors.tableHeaderValue ? 'error' : ''}
-              />
-              {errors.tableHeaderValue && <span className="error-text">{errors.tableHeaderValue}</span>}
-              <small>Comma-separated column headers</small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="tableQuestionValue">
-                Table Question Value <span className="required">*</span>
-              </label>
-              <textarea
-                id="tableQuestionValue"
-                name="tableQuestionValue"
-                value={formData.tableQuestionValue}
-                onChange={handleChange}
-                rows="4"
-                placeholder="a:Question 1&#10;b:Question 2&#10;c:Question 3"
-                className={errors.tableQuestionValue ? 'error' : ''}
-              />
-              {errors.tableQuestionValue && <span className="error-text">{errors.tableQuestionValue}</span>}
-              <small>Format: a:Question 1\nb:Question 2 (max 20 questions, 100 chars each)</small>
-            </div>
-          </div>
-        )}
-
-        {/* Options for Multiple Choice and Dropdown types */}
-        {fieldConfig.showOptions && (
-          <div className="form-section">
-            <h3>Options</h3>
-            
-            {formData.options.map((option, index) => (
-              <div key={index} className="option-group">
-                <div className="option-header">
-                  <h4>Option {index + 1}</h4>
-                  <button 
-                    type="button"
-                    className="btn btn-sm btn-danger"
-                    onClick={() => removeOption(index)}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Option Text (Regional Language)</label>
-                    <input
-                      type="text"
-                      value={option.text || ''}
-                      onChange={(e) => handleOptionChange(index, 'text', e.target.value)}
-                      placeholder="Option text"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Option Text in English</label>
-                    <input
-                      type="text"
-                      value={option.textInEnglish || ''}
-                      onChange={(e) => handleOptionChange(index, 'textInEnglish', e.target.value)}
-                      placeholder="Option text in English"
-                    />
-                  </div>
-                  {fieldConfig.showOptionChildren && (
-                    <div className="form-group">
-                      <label>Child Questions (comma-separated)</label>
-                      <input
-                        type="text"
-                        value={option.children || ''}
-                        onChange={(e) => handleOptionChange(index, 'children', e.target.value)}
-                        placeholder="e.g., Q1.1,Q1.2"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-            
-            {errors.options && <span className="error-text">{errors.options}</span>}
-            
-            <button 
-              type="button"
-              className="btn btn-secondary"
-              onClick={addOption}
-            >
-              Add Option
-            </button>
+            <h3>Translations ({surveyLanguages.length} {surveyLanguages.length === 1 ? 'language' : 'languages'})</h3>
+            <TranslationPanel
+              languages={surveyLanguages}
+              translations={formData.translations}
+              onChange={handleTranslationsChange}
+              questionType={formData.questionType}
+              fieldConfig={fieldConfig}
+            />
           </div>
         )}
 
@@ -444,11 +354,13 @@ const QuestionForm = () => {
                 name="isDynamic"
                 value={formData.isDynamic}
                 onChange={handleChange}
+                disabled={fieldConfig.isDynamic !== undefined}
               >
                 {yesNoOptions.map(opt => (
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
+              {fieldConfig.isDynamic && <small>Auto-set based on question type</small>}
             </div>
 
             <div className="form-group">
@@ -552,7 +464,11 @@ const QuestionForm = () => {
                 value={formData.questionMediaLink}
                 onChange={handleChange}
                 placeholder="URL to media file"
+                disabled={formData.questionMediaType === 'None'}
               />
+              {formData.questionMediaType === 'None' && (
+                <small>Disabled when Media Type is None</small>
+              )}
             </div>
           </div>
         </div>

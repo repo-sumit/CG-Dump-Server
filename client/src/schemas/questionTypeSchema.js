@@ -28,17 +28,21 @@ export const questionTypeFields = {
     showMaxMin: false,
     showTextLimit: false,
     textInputTypeValue: 'None',
-    questionMediaTypeValue: 'None'
+    questionMediaTypeValue: 'None',
+    isDynamic: 'Yes',
+    maxOptions: 15
   },
   'Multiple Choice Multi Select': {
     showOptions: true,
-    showOptionChildren: true,
+    showOptionChildren: false,
     showTextInputType: false,
     showTableFields: false,
     showMaxMin: false,
     showTextLimit: false,
     textInputTypeValue: 'None',
-    questionMediaTypeValue: 'None'
+    questionMediaTypeValue: 'None',
+    isDynamic: 'Yes',
+    maxOptions: 15
   },
   'Tabular Text Input': {
     showOptions: false,
@@ -46,7 +50,8 @@ export const questionTypeFields = {
     showTextInputType: true,
     showTableFields: true,
     showMaxMin: true,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'No'
   },
   'Tabular Drop Down': {
     showOptions: true,
@@ -55,7 +60,9 @@ export const questionTypeFields = {
     showTableFields: true,
     showMaxMin: false,
     showTextLimit: false,
-    textInputTypeValue: 'None'
+    textInputTypeValue: 'None',
+    isDynamic: 'Yes',
+    maxOptions: 15
   },
   'Tabular Check Box': {
     showOptions: false,
@@ -63,7 +70,8 @@ export const questionTypeFields = {
     showTextInputType: false,
     showTableFields: true,
     showMaxMin: false,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'No'
   },
   'Text Response': {
     showOptions: false,
@@ -71,7 +79,8 @@ export const questionTypeFields = {
     showTextInputType: true,
     showTableFields: false,
     showMaxMin: true,
-    showTextLimit: true
+    showTextLimit: true,
+    isDynamic: 'Yes'
   },
   'Image Upload': {
     showOptions: false,
@@ -79,7 +88,8 @@ export const questionTypeFields = {
     showTextInputType: false,
     showTableFields: false,
     showMaxMin: false,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'Yes'
   },
   'Video Upload': {
     showOptions: false,
@@ -87,7 +97,8 @@ export const questionTypeFields = {
     showTextInputType: false,
     showTableFields: false,
     showMaxMin: false,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'No'
   },
   'Voice Response': {
     showOptions: false,
@@ -95,7 +106,8 @@ export const questionTypeFields = {
     showTextInputType: false,
     showTableFields: false,
     showMaxMin: false,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'No'
   },
   'Likert Scale': {
     showOptions: true,
@@ -103,7 +115,9 @@ export const questionTypeFields = {
     showTextInputType: false,
     showTableFields: false,
     showMaxMin: false,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'No',
+    maxOptions: 15
   },
   'Calendar': {
     showOptions: false,
@@ -111,7 +125,8 @@ export const questionTypeFields = {
     showTextInputType: false,
     showTableFields: false,
     showMaxMin: false,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'Yes'
   },
   'Drop Down': {
     showOptions: true,
@@ -119,7 +134,9 @@ export const questionTypeFields = {
     showTextInputType: false,
     showTableFields: false,
     showMaxMin: false,
-    showTextLimit: false
+    showTextLimit: false,
+    isDynamic: 'Yes',
+    maxOptions: 15
   }
 };
 
