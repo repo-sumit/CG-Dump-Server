@@ -5,13 +5,15 @@ A comprehensive web application for creating and managing surveys with automatic
 ## Features
 
 - **Survey Management**: Create, edit, and delete surveys with comprehensive metadata
+- **Multi-Language Support**: Create surveys in multiple languages with automatic row duplication in Excel export
+- **Translation Panel**: Intuitive tabbed interface for entering question content in multiple languages
 - **Question Builder**: Dynamic form-based question creation supporting 12 different question types
+- **Smart Field Configuration**: Auto-configured fields based on question type (isDynamic, media type, etc.)
+- **Option Management**: Built-in option builder with 15-option limit and child question mapping
 - **Parent-Child Questions**: Support for conditional questions based on parent responses
-- **Excel Export**: Generate Excel dump sheets with exact formatting matching reference specifications
+- **Excel Export**: Generate Excel dump sheets with multi-language row duplication matching reference format
 - **Upload Validation**: Validate CSV/XLSX files against schema before importing data
 - **Enhanced Validation**: Comprehensive validation engine with cross-field validation
-- **Validation**: Built-in validation rules ensuring data quality and format compliance
-- **Multi-language Support**: Support for multiple languages/mediums per survey
 - **Date Pickers**: Calendar-based date selection with time support
 
 ## Tech Stack
@@ -33,14 +35,17 @@ fmb-survey-builder/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── SurveyForm.jsx      # Survey creation/editing
-│   │   │   ├── QuestionForm.jsx    # Dynamic question form
+│   │   │   ├── QuestionForm.jsx    # Dynamic question form with multi-language support
+│   │   │   ├── TranslationPanel.jsx # Multi-language translation interface
 │   │   │   ├── QuestionList.jsx    # Question management
 │   │   │   ├── SurveyList.jsx      # Survey listing
 │   │   │   └── Navigation.jsx      # Navigation component
 │   │   ├── hooks/
 │   │   │   └── useValidation.js    # Form validation hooks
 │   │   ├── schemas/
-│   │   │   └── questionTypeSchema.js # Question type configurations
+│   │   │   ├── questionTypeSchema.js # Question type configurations
+│   │   │   ├── languageMappings.js   # Language to native script mappings
+│   │   │   └── validationConstants.js # Validation constants
 │   │   ├── services/
 │   │   │   └── api.js              # API service layer
 │   │   ├── App.jsx                 # Main app component
@@ -128,12 +133,85 @@ The application will open in your browser at `http://localhost:3000`
    - Survey ID (unique identifier, format: NAME_01)
    - Survey Name
    - Survey Description
-   - Available languages (comma-separated)
+   - **Available Mediums**: Select one or more languages from dropdown (English, Hindi, Bengali, etc.)
    - Various settings (Public, In School, etc.)
    - Launch and Close dates (format: DD/MM/YYYY HH:MM:SS)
 3. Click "Create Survey"
 
-### Adding Questions
+### Multi-Language Question Creation
+
+The system supports creating questions in multiple languages with automatic Excel export row duplication.
+
+![Multi-Language Translation Panel](https://github.com/user-attachments/assets/dd61ab37-e8b3-4ed7-bd65-93f6d6e501b5)
+
+#### Adding Multi-Language Questions
+
+1. From the survey list, click "Manage Questions" for a survey
+2. Click "Add Question"
+3. Enter Question ID (e.g., Q1, Q2, Q1.1 for child questions)
+4. Select the Question Type - the form will dynamically adjust:
+   - **isDynamic** field auto-set based on question type
+   - **Question Media Link** disabled when Media Type is "None"
+   - Relevant fields shown/hidden based on type
+5. **Translation Panel** appears with tabs for each survey language:
+   - Each tab shows the language in native script (e.g., हिन्दी, বাংলা)
+   - Completion percentage badge shows translation progress
+   - Enter question description and options for each language
+6. For option-based questions:
+   - Click "Add Option" button (shows current count e.g., "0/15")
+   - Maximum 15 options per question
+   - Enter option text for each language
+   - For Single Select: can map child questions to each option
+7. Fill translations for all languages
+8. Click "Add Question"
+
+#### Supported Languages
+
+The system supports 10 languages with native script display:
+
+| Language | Native Script |
+|----------|---------------|
+| English  | English       |
+| Hindi    | हिन्दी        |
+| Bengali  | বাংলা         |
+| Assamese | অসমীয়া       |
+| Bodo     | बड़ो          |
+| Gujarati | ગુજરાતી       |
+| Marathi  | मराठी         |
+| Tamil    | தமிழ்         |
+| Telugu   | తెలుగు        |
+| Punjabi  | ਪੰਜਾਬੀ       |
+
+#### Translation Data Structure
+
+Questions are stored with a translations object:
+
+```javascript
+{
+  questionId: 'Q1',
+  questionType: 'Multiple Choice Single Select',
+  isDynamic: 'Yes',
+  isMandatory: 'Yes',
+  translations: {
+    'English': {
+      questionDescription: 'What is your name?',
+      options: [
+        { text: 'John', textInEnglish: 'John', children: '' },
+        { text: 'Jane', textInEnglish: 'Jane', children: '' }
+      ]
+    },
+    'Hindi': {
+      questionDescription: 'आपका नाम क्या है?',
+      options: [
+        { text: 'जॉन', textInEnglish: 'John', children: '' },
+        { text: 'जेन', textInEnglish: 'Jane', children: '' }
+      ]
+    }
+  }
+}
+```
+
+### Adding Questions (Legacy Single-Language)
 
 1. From the survey list, click "Manage Questions" for a survey
 2. Click "Add Question"
@@ -166,8 +244,26 @@ The application will open in your browser at `http://localhost:3000`
 1. Navigate to the questions page for a survey
 2. Click "Export to Excel"
 3. An Excel file will be downloaded with two sheets:
-   - **Survey Master**: Survey metadata
+   - **Survey Master**: Survey metadata (17 columns)
    - **Question Master**: All questions with 84 columns in exact format
+
+#### Multi-Language Export Behavior
+
+For surveys with multiple languages, the export automatically duplicates question rows:
+
+**Example**: A survey with 3 languages (English, Hindi, Bengali) and 2 questions:
+- Question Q1 × 3 languages = 3 rows in Excel
+- Question Q2 × 3 languages = 3 rows in Excel
+- **Total**: 6 rows in Question Master sheet
+
+Each row contains:
+- **Medium**: Native script (English, हिन्दी, বাংলা)
+- **Medium_in_english**: English name (English, Hindi, Bengali)
+- **Question Description**: Translation for that language
+- **Options**: Translated options for that language
+- All other fields (Question ID, Type, settings) remain the same
+
+This format matches the FMB reference specification for multi-language surveys.
 
 ## API Endpoints
 
@@ -289,7 +385,46 @@ The validation results include:
 Survey ID, Survey Name, Survey Description, available_mediums, Hierarchical Access Level, Public, In School, Accept multiple Entries, Launch Date, Close Date, Mode, visible_on_report_bot, Is Active?, Download_response, Geo Fencing, Geo Tagging, Test Survey
 
 ### Question Master Sheet (84 columns)
-Survey ID, Medium, Medium_in_english, Question_ID, Question Type, IsDynamic, Question_Description_Optional, Max_Value, Min_Value, Is Mandatory, Table_Header_value, Table_Question_value, Source_Question, Text_input_type, text_limit_characters, Mode, Question_Media_Link, Question_Media_Type, Question Description, Question Description_in_english, Option_1 through Option_20 (with English and Children columns for each), Correct_Answer_Optional, Children Questions, Outcome Description
+Survey ID, Medium, Medium_in_english, Question_ID, Question Type, IsDynamic, Question_Description_Optional, Max_Value, Min_Value, Is Mandatory, Table_Header_value, Table_Question_value, Source_Question, Text_input_type, text_limit_characters, Mode, Question_Media_Link, Question_Media_Type, Question Description, Question Description (duplicate column), Option_1 through Option_15 (with _in_English and Children columns for each), Correct_Answer_Optional, Children Questions, Outcome Description
+
+**Note**: The export now uses **15 options maximum** (Option_1 through Option_15) instead of 20, with three columns per option:
+- `Option_N`: Option text in the question's language
+- `Option_N_in_English`: English translation
+- `Option_NChildren`: Child question IDs triggered by this option (for Single Select only)
+
+### Multi-Language Row Duplication
+
+Questions are duplicated per language in the export:
+- **Medium** column: Native script (English, हिन्दी, বাংলা, etc.)
+- **Medium_in_english** column: English language name (English, Hindi, Bengali, etc.)
+- **Question Description** columns: Translated question text
+- **Option_N** columns: Translated option text
+- All other metadata columns (Question ID, Type, IsDynamic, etc.) remain identical across language rows
+
+## Question Type Configuration
+
+Each question type has specific field requirements and auto-configuration:
+
+| Question Type | isDynamic | Max Options | Show Options | Show Table Fields | Show Children | Media Type |
+|--------------|-----------|-------------|--------------|-------------------|---------------|------------|
+| Multiple Choice Single Select | Yes | 15 | ✓ | ✗ | ✓ | None (fixed) |
+| Multiple Choice Multi Select | Yes | 15 | ✓ | ✗ | ✗ | None (fixed) |
+| Tabular Drop Down | Yes | 15 | ✓ | ✓ | ✗ | - |
+| Tabular Text Input | No | - | ✗ | ✓ | ✗ | - |
+| Tabular Check Box | No | - | ✗ | ✓ | ✗ | - |
+| Text Response | Yes | - | ✗ | ✗ | ✗ | - |
+| Image Upload | Yes | - | ✗ | ✗ | ✗ | - |
+| Video Upload | No | - | ✗ | ✗ | ✗ | - |
+| Voice Response | No | - | ✗ | ✗ | ✗ | - |
+| Likert Scale | No | 15 | ✓ | ✗ | ✗ | - |
+| Calendar | Yes | - | ✗ | ✗ | ✗ | - |
+| Drop Down | Yes | 15 | ✓ | ✗ | ✗ | - |
+
+**Auto-Configuration Behaviors:**
+- **isDynamic**: Automatically set and disabled based on question type
+- **Question Media Type**: Set to "None" and disabled for Multiple Choice types
+- **Question Media Link**: Automatically disabled and cleared when Media Type is "None"
+- **Max Options**: Visual counter shows current/max (e.g., "Add Option (2/15)")
 
 ## Design Decisions & Assumptions
 
@@ -307,7 +442,12 @@ Survey ID, Medium, Medium_in_english, Question_ID, Question Type, IsDynamic, Que
 
 7. **Child Questions**: Parent questions must be created before child questions. The UI sorts questions to show parents first.
 
-8. **Languages**: Survey supports multiple languages via the "available_mediums" field. Each question can specify its language in the "medium" field.
+8. **Multi-Language Support**: 
+   - Surveys support multiple languages via the "available_mediums" field
+   - Questions store translations in a `translations` object with one entry per language
+   - Excel export automatically duplicates rows (one per language per question)
+   - Native script display in UI (हिन्दी, বাংলা, etc.)
+   - Translation completeness tracking with percentage indicators
 
 9. **Error Handling**: Comprehensive error handling with user-friendly messages. Console logging for debugging.
 
