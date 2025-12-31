@@ -3,7 +3,6 @@ import React from 'react';
 const DropDownRenderer = ({ question, language }) => {
   const translations = question.translations?.[language] || {};
   const options = translations.options || [];
-  const questionDescription = translations.questionDescription || '';
   const optionalDescription = translations.questionDescriptionOptional || '';
 
   return (

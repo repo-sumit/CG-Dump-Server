@@ -16,6 +16,7 @@ const SurveyPreview = () => {
 
   useEffect(() => {
     loadSurveyData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveyId]);
 
   const loadSurveyData = async () => {

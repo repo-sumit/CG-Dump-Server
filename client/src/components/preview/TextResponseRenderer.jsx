@@ -2,7 +2,6 @@ import React from 'react';
 
 const TextResponseRenderer = ({ question }) => {
   const maxLength = question.textLimitCharacters || 1024;
-  const inputType = question.textInputType || 'Alphanumeric';
 
   return (
     <div className="text-response-renderer">
