@@ -46,6 +46,20 @@ const QuestionList = () => {
     }
   };
 
+  const handleDuplicate = async (questionId) => {
+    try {
+      const duplicatedQuestion = await questionAPI.duplicate(surveyId, questionId);
+      loadData();
+      alert(`Question duplicated successfully as ${duplicatedQuestion.questionId}`);
+      // Navigate to edit the duplicated question
+      navigate(`/surveys/${surveyId}/questions/${duplicatedQuestion.questionId}/edit`);
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Failed to duplicate question';
+      alert(errorMessage);
+      console.error(err);
+    }
+  };
+
   const handleExport = async () => {
     try {
       setExporting(true);
@@ -145,6 +159,12 @@ const QuestionList = () => {
                     onClick={() => navigate(`/surveys/${surveyId}/questions/${question.questionId}/edit`)}
                   >
                     Edit
+                  </button>
+                  <button 
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => handleDuplicate(question.questionId)}
+                  >
+                    Duplicate
                   </button>
                   <button 
                     className="btn btn-sm btn-danger"

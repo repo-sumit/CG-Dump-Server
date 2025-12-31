@@ -227,4 +227,123 @@ router.delete('/:id/questions/:questionId', async (req, res) => {
   }
 });
 
+// POST /api/surveys/:id/duplicate - Duplicate survey
+router.post('/:id/duplicate', async (req, res) => {
+  try {
+    const { newSurveyId } = req.body;
+    
+    if (!newSurveyId) {
+      return res.status(400).json({ error: 'New Survey ID is required' });
+    }
+    
+    const store = await readStore();
+    
+    // Find original survey
+    const originalSurvey = store.surveys.find(s => s.surveyId === req.params.id);
+    if (!originalSurvey) {
+      return res.status(404).json({ error: 'Survey not found' });
+    }
+    
+    // Check if new survey ID already exists
+    if (store.surveys.find(s => s.surveyId === newSurveyId)) {
+      return res.status(400).json({ error: 'Survey ID already exists' });
+    }
+    
+    // Create duplicated survey (reset dates)
+    const duplicatedSurvey = {
+      ...originalSurvey,
+      surveyId: newSurveyId,
+      launchDate: '',
+      closeDate: ''
+    };
+    
+    // Validate duplicated survey
+    const validation = validator.validateSurvey(duplicatedSurvey);
+    if (!validation.isValid) {
+      return res.status(400).json({ errors: validation.errors });
+    }
+    
+    // Get all questions for original survey
+    const originalQuestions = store.questions.filter(q => q.surveyId === req.params.id);
+    
+    // Duplicate all questions
+    const duplicatedQuestions = originalQuestions.map(q => ({
+      ...q,
+      surveyId: newSurveyId
+    }));
+    
+    // Add to store
+    store.surveys.push(duplicatedSurvey);
+    store.questions.push(...duplicatedQuestions);
+    await writeStore(store);
+    
+    res.status(201).json({
+      survey: duplicatedSurvey,
+      questionsCount: duplicatedQuestions.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to duplicate survey', message: error.message });
+  }
+});
+
+// POST /api/surveys/:surveyId/questions/:questionId/duplicate - Duplicate question
+router.post('/:surveyId/questions/:questionId/duplicate', async (req, res) => {
+  try {
+    const { surveyId, questionId } = req.params;
+    
+    const store = await readStore();
+    
+    // Find original question
+    const originalQuestion = store.questions.find(
+      q => q.surveyId === surveyId && q.questionId === questionId
+    );
+    
+    if (!originalQuestion) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    
+    // Generate new question ID
+    const surveyQuestions = store.questions.filter(q => q.surveyId === surveyId);
+    const questionNumbers = surveyQuestions
+      .map(q => {
+        const match = q.questionId.match(/^Q(\d+)(?:\.(\d+))?$/);
+        if (match) {
+          return parseInt(match[1]);
+        }
+        return 0;
+      })
+      .filter(n => n > 0);
+    
+    const maxQuestionNum = questionNumbers.length > 0 ? Math.max(...questionNumbers) : 0;
+    const newQuestionId = `Q${maxQuestionNum + 1}`;
+    
+    // Create duplicated question
+    const duplicatedQuestion = {
+      ...originalQuestion,
+      questionId: newQuestionId,
+      sourceQuestion: '', // Reset source question for duplicated question
+      optionChildren: originalQuestion.optionChildren || ''
+    };
+    
+    // Check if new question ID already exists (shouldn't happen, but safety check)
+    if (store.questions.find(q => q.surveyId === surveyId && q.questionId === newQuestionId)) {
+      return res.status(400).json({ error: 'Generated question ID already exists' });
+    }
+    
+    // Validate duplicated question
+    const validation = validator.validateQuestion(duplicatedQuestion, store.questions);
+    if (!validation.isValid) {
+      return res.status(400).json({ errors: validation.errors });
+    }
+    
+    // Add to store
+    store.questions.push(duplicatedQuestion);
+    await writeStore(store);
+    
+    res.status(201).json(duplicatedQuestion);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to duplicate question', message: error.message });
+  }
+});
+
 module.exports = router;

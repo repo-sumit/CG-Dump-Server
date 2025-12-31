@@ -32,6 +32,12 @@ export const surveyAPI = {
   delete: async (surveyId) => {
     const response = await axios.delete(`${API_BASE_URL}/surveys/${surveyId}`);
     return response.data;
+  },
+
+  // Duplicate survey
+  duplicate: async (surveyId, newSurveyId) => {
+    const response = await axios.post(`${API_BASE_URL}/surveys/${surveyId}/duplicate`, { newSurveyId });
+    return response.data;
   }
 };
 
@@ -58,6 +64,12 @@ export const questionAPI = {
   // Delete question
   delete: async (surveyId, questionId) => {
     const response = await axios.delete(`${API_BASE_URL}/surveys/${surveyId}/questions/${questionId}`);
+    return response.data;
+  },
+
+  // Duplicate question
+  duplicate: async (surveyId, questionId) => {
+    const response = await axios.post(`${API_BASE_URL}/surveys/${surveyId}/questions/${questionId}/duplicate`);
     return response.data;
   }
 };

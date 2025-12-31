@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { surveyAPI } from '../services/api';
+import DuplicateSurveyModal from './DuplicateSurveyModal';
 
 const SurveyList = () => {
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [duplicatingModal, setDuplicatingModal] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,6 +37,23 @@ const SurveyList = () => {
         alert('Failed to delete survey');
         console.error(err);
       }
+    }
+  };
+
+  const handleDuplicate = (survey) => {
+    setDuplicatingModal(survey);
+  };
+
+  const handleDuplicateConfirm = async (newSurveyId) => {
+    try {
+      await surveyAPI.duplicate(duplicatingModal.surveyId, newSurveyId);
+      setDuplicatingModal(null);
+      loadSurveys();
+      alert(`Survey duplicated successfully as ${newSurveyId}`);
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || 'Failed to duplicate survey';
+      alert(errorMessage);
+      console.error(err);
     }
   };
 
@@ -119,6 +138,12 @@ const SurveyList = () => {
                 </button>
                 <button 
                   className="btn btn-secondary btn-sm"
+                  onClick={() => handleDuplicate(survey)}
+                >
+                  Duplicate
+                </button>
+                <button 
+                  className="btn btn-secondary btn-sm"
                   onClick={() => navigate(`/surveys/${survey.surveyId}/edit`)}
                 >
                   Edit
@@ -133,6 +158,14 @@ const SurveyList = () => {
             </div>
           ))}
         </div>
+      )}
+      
+      {duplicatingModal && (
+        <DuplicateSurveyModal
+          survey={duplicatingModal}
+          onConfirm={handleDuplicateConfirm}
+          onCancel={() => setDuplicatingModal(null)}
+        />
       )}
     </div>
   );
