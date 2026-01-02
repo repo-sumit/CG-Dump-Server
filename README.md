@@ -452,34 +452,3 @@ Each question type has specific field requirements and auto-configuration:
 9. **Error Handling**: Comprehensive error handling with user-friendly messages. Console logging for debugging.
 
 10. **Responsive Design**: UI is responsive and works on desktop and tablet devices.
-
-## Security Considerations
-
-This is a prototype/development application. For production deployment, consider:
-
-1. **Rate Limiting**: Add rate limiting to prevent abuse of API endpoints
-2. **Authentication & Authorization**: Implement user authentication and role-based access control
-3. **Input Sanitization**: Add additional input sanitization to prevent injection attacks
-4. **HTTPS**: Deploy with HTTPS in production
-5. **CORS Configuration**: Restrict CORS to specific domains in production
-6. **File Upload Security**: If implementing media uploads, add file type validation, size limits, and virus scanning
-
-## Future Enhancements
-
-- Database integration (MongoDB/PostgreSQL)
-- User authentication and role-based access
-- Rate limiting on API endpoints
-- Actual file upload and storage for media questions
-- Survey preview functionality
-- Bulk question import from CSV
-- Survey duplication/cloning
-- Question reordering via drag-and-drop
-- Advanced search and filtering
-- Survey analytics and reporting
-- Multi-tenant support
-- Internationalization (i18n) for UI text
-- Toast notifications instead of browser alerts
-- More robust date validation
-- Shared validation constants between client and server
-
-tory.
