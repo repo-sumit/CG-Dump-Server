@@ -1,5 +1,5 @@
 import React from 'react';
-
+{}
 const TabularTextInputRenderer = ({ question, language, onAnswer }) => {
   const translations = question.translations?.[language] || {};
   const tableHeaderValue = translations.tableHeaderValue || question.tableHeaderValue || '';

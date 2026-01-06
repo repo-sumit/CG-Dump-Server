@@ -245,7 +245,10 @@ function mapQuestionColumnToField(columnName) {
     questiondescription: 'questionDescription'
   };
 
-  if (normalized.startsWith('questiondescription') && normalized !== 'questiondescriptionoptional') {
+  if (
+    normalized.startsWith('questiondescription') &&
+    normalized !== 'questiondescriptionoptional'
+  ) {
     return 'questionDescription';
   }
 
@@ -387,6 +390,15 @@ router.post('/', upload.single('file'), async (req, res) => {
     
     if (fileExt === '.xlsx' || fileExt === '.xls') {
       importData = await parseXLSX(filePath);
+      if (importData.surveys.length === 0 || importData.questions.length === 0) {
+        return res.status(400).json({
+          error: 'Survey Master and Question Master sheets are required for Excel imports.',
+          details: {
+            hasSurveyMaster: importData.surveys.length > 0,
+            hasQuestionMaster: importData.questions.length > 0
+          }
+        });
+      }
     } else if (fileExt === '.csv') {
       const sheetType = req.query.sheetType || 'both';
       importData = await parseCSV(filePath, sheetType);
