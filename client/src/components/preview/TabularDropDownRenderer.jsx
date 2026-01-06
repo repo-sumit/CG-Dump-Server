@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TabularDropDownRenderer = ({ question, language }) => {
+const TabularDropDownRenderer = ({ question, language, onAnswer }) => {
   const translations = question.translations?.[language] || {};
   const options = (translations.options && translations.options.length > 0)
     ? translations.options
@@ -40,7 +40,10 @@ const TabularDropDownRenderer = ({ question, language }) => {
               <td className="row-label">{tq.value}</td>
               {tableHeaders.map((_, colIdx) => (
                 <td key={colIdx}>
-                  <select className="preview-dropdown">
+                  <select
+                    className="preview-dropdown"
+                    onChange={() => onAnswer?.(question.questionId, { value: true, answered: true })}
+                  >
                     <option value="">Select...</option>
                     {options.map((opt, optIdx) => (
                       <option key={optIdx} value={opt.text}>

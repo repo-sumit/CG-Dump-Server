@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { surveyAPI, questionAPI } from '../../services/api';
 import PreviewNavigation from './PreviewNavigation';
@@ -9,11 +9,13 @@ const SurveyPreview = () => {
   const navigate = useNavigate();
   const [survey, setSurvey] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [availableLanguages, setAvailableLanguages] = useState(['English']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
     setCurrentQuestionIndex(0);
@@ -59,6 +61,7 @@ const SurveyPreview = () => {
       
       setSurvey(surveyData);
       setQuestions(sortQuestions(questionsData));
+      setAnswers({});
 
       const languages = parseAvailableLanguages(surveyData.availableMediums);
       setAvailableLanguages(languages.length > 0 ? languages : ['English']);
@@ -73,12 +76,98 @@ const SurveyPreview = () => {
     }
   };
 
+  const effectiveLanguage = availableLanguages.includes(selectedLanguage)
+    ? selectedLanguage
+    : (availableLanguages[0] || 'English');
+
   const handleNavigate = (index) => {
     setCurrentQuestionIndex(index);
+    setValidationError('');
   };
 
   const handleLanguageChange = (e) => {
     setSelectedLanguage(e.target.value);
+  };
+
+  const handleAnswer = (questionId, answer) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: answer
+    }));
+  };
+
+  const getQuestionOptions = (question) => {
+    const translations = question.translations?.[effectiveLanguage] || {};
+    return (translations.options && translations.options.length > 0)
+      ? translations.options
+      : (question.options || []);
+  };
+
+  const isChildTriggered = (parentQuestion, parentAnswer, childQuestionId) => {
+    if (!parentQuestion || !parentAnswer) {
+      return false;
+    }
+
+    const options = getQuestionOptions(parentQuestion);
+    const selectedIndices = Array.isArray(parentAnswer.value)
+      ? parentAnswer.value
+      : parentAnswer.value !== null && parentAnswer.value !== undefined
+        ? [parentAnswer.value]
+        : [];
+
+    return selectedIndices.some((index) => {
+      const option = options[index];
+      if (!option || !option.children) return false;
+      const children = option.children.split(',').map(child => child.trim()).filter(Boolean);
+      return children.includes(childQuestionId);
+    });
+  };
+
+  const visibleQuestions = useMemo(() => {
+    return questions.filter((question) => {
+      if (!question.sourceQuestion) {
+        return true;
+      }
+      const parent = questions.find(q => q.questionId === question.sourceQuestion);
+      const parentAnswer = answers[question.sourceQuestion];
+      return isChildTriggered(parent, parentAnswer, question.questionId);
+    });
+  }, [questions, answers, effectiveLanguage]);
+
+  useEffect(() => {
+    if (currentQuestionIndex >= visibleQuestions.length && visibleQuestions.length > 0) {
+      setCurrentQuestionIndex(0);
+    }
+  }, [currentQuestionIndex, visibleQuestions.length]);
+
+  const isAnswered = (question) => {
+    const answer = answers[question.questionId];
+    if (!answer) return false;
+    if (typeof answer.answered === 'boolean') {
+      return answer.answered;
+    }
+    if (Array.isArray(answer.value)) {
+      return answer.value.length > 0;
+    }
+    return answer.value !== null && answer.value !== undefined && String(answer.value).trim() !== '';
+  };
+
+  const handleSubmitCurrent = () => {
+    const current = visibleQuestions[currentQuestionIndex];
+    if (!current) {
+      return;
+    }
+    if (current.isMandatory === 'Yes' && !isAnswered(current)) {
+      setValidationError('Please answer this question before continuing.');
+      return;
+    }
+    setValidationError('');
+
+    if (currentQuestionIndex < visibleQuestions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      alert('Preview completed. You have reached the end of the survey.');
+    }
   };
 
   if (loading) {
@@ -107,10 +196,7 @@ const SurveyPreview = () => {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const effectiveLanguage = availableLanguages.includes(selectedLanguage)
-    ? selectedLanguage
-    : (availableLanguages[0] || 'English');
+  const currentQuestion = visibleQuestions[currentQuestionIndex];
 
   return (
     <div className="survey-preview-container">
@@ -147,16 +233,37 @@ const SurveyPreview = () => {
 
       <PreviewNavigation
         currentQuestion={currentQuestionIndex}
-        totalQuestions={questions.length}
+        totalQuestions={visibleQuestions.length}
         onNavigate={handleNavigate}
-        questions={questions}
+        questions={visibleQuestions}
       />
 
       <div className="preview-content">
+        {validationError && (
+          <div className="error-message" style={{ marginBottom: '1rem' }}>
+            {validationError}
+          </div>
+        )}
         <QuestionRenderer 
           question={currentQuestion} 
           language={effectiveLanguage}
+          answer={answers[currentQuestion?.questionId]}
+          onAnswer={handleAnswer}
         />
+        <div className="preview-cta">
+          <button
+            className="btn btn-primary"
+            onClick={handleSubmitCurrent}
+          >
+            {currentQuestionIndex < visibleQuestions.length - 1 ? 'Submit & Next' : 'Finish Preview'}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate(`/surveys/${surveyId}/questions`)}
+          >
+            Back to Questions
+          </button>
+        </div>
       </div>
     </div>
   );

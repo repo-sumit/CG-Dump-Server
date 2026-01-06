@@ -10,7 +10,7 @@ import CalendarRenderer from './CalendarRenderer';
 import MediaUploadRenderer from './MediaUploadRenderer';
 import TabularCheckBoxRenderer from './TabularCheckBoxRenderer';
 
-const QuestionRenderer = ({ question, language }) => {
+const QuestionRenderer = ({ question, language, answer, onAnswer }) => {
   if (!question) {
     return null;
   }
@@ -24,36 +24,99 @@ const QuestionRenderer = ({ question, language }) => {
 
     switch (type) {
       case 'Tabular Drop Down':
-        return <TabularDropDownRenderer question={question} language={language} />;
+        return (
+          <TabularDropDownRenderer
+            question={question}
+            language={language}
+            onAnswer={onAnswer}
+          />
+        );
       
       case 'Multiple Choice Single Select':
-        return <MultipleChoiceSingleRenderer question={question} language={language} />;
+        return (
+          <MultipleChoiceSingleRenderer
+            question={question}
+            language={language}
+            value={answer?.value ?? null}
+            onChange={(value) => onAnswer?.(question.questionId, { value })}
+          />
+        );
       
       case 'Tabular Text Input':
-        return <TabularTextInputRenderer question={question} language={language} />;
+        return (
+          <TabularTextInputRenderer
+            question={question}
+            language={language}
+            onAnswer={onAnswer}
+          />
+        );
       
       case 'Text Response':
-        return <TextResponseRenderer question={question} />;
+        return (
+          <TextResponseRenderer
+            question={question}
+            value={answer?.value || ''}
+            onChange={(value) => onAnswer?.(question.questionId, { value })}
+          />
+        );
       
       case 'Drop Down':
-        return <DropDownRenderer question={question} language={language} />;
+        return (
+          <DropDownRenderer
+            question={question}
+            language={language}
+            value={answer?.value || ''}
+            onChange={(value) => onAnswer?.(question.questionId, { value })}
+          />
+        );
       
       case 'Multiple Choice Multi Select':
-        return <MultipleChoiceMultiRenderer question={question} language={language} />;
+        return (
+          <MultipleChoiceMultiRenderer
+            question={question}
+            language={language}
+            value={Array.isArray(answer?.value) ? answer.value : []}
+            onChange={(value) => onAnswer?.(question.questionId, { value })}
+          />
+        );
       
       case 'Likert Scale':
-        return <LikertScaleRenderer question={question} language={language} />;
+        return (
+          <LikertScaleRenderer
+            question={question}
+            language={language}
+            value={answer?.value ?? null}
+            onChange={(value) => onAnswer?.(question.questionId, { value })}
+          />
+        );
       
       case 'Calendar':
-        return <CalendarRenderer question={question} />;
+        return (
+          <CalendarRenderer
+            question={question}
+            value={answer?.value || ''}
+            onChange={(value) => onAnswer?.(question.questionId, { value })}
+          />
+        );
       
       case 'Image Upload':
       case 'Video Upload':
       case 'Voice Response':
-        return <MediaUploadRenderer question={question} />;
+        return (
+          <MediaUploadRenderer
+            question={question}
+            onChange={(value) => onAnswer?.(question.questionId, { value })}
+          />
+        );
       
       case 'Tabular Check Box':
-        return <TabularCheckBoxRenderer question={question} language={language} />;
+        return (
+          <TabularCheckBoxRenderer
+            question={question}
+            language={language}
+            onAnswer={onAnswer}
+          />
+        );
       
       default:
         return <div className="unsupported-question-type">Question type not supported in preview: {type}</div>;

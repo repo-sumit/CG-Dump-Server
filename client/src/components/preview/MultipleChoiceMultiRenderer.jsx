@@ -1,19 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const MultipleChoiceMultiRenderer = ({ question, language }) => {
-  const [selectedOptions, setSelectedOptions] = useState([]);
+const MultipleChoiceMultiRenderer = ({ question, language, value, onChange }) => {
+  const [selectedOptions, setSelectedOptions] = useState(value || []);
   const translations = question.translations?.[language] || {};
   const options = (translations.options && translations.options.length > 0)
     ? translations.options
     : (question.options || []);
 
   const toggleOption = (index) => {
-    setSelectedOptions(prev => 
-      prev.includes(index) 
+    setSelectedOptions(prev => {
+      const next = prev.includes(index) 
         ? prev.filter(i => i !== index)
-        : [...prev, index]
-    );
+        : [...prev, index];
+      onChange?.(next);
+      return next;
+    });
   };
+
+  useEffect(() => {
+    setSelectedOptions(value || []);
+  }, [value]);
 
   return (
     <div className="multiple-choice-multi-renderer">

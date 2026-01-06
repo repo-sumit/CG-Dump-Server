@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const MultipleChoiceSingleRenderer = ({ question, language }) => {
-  const [selectedOption, setSelectedOption] = useState(null);
+const MultipleChoiceSingleRenderer = ({ question, language, value, onChange }) => {
+  const [selectedOption, setSelectedOption] = useState(value ?? null);
   const translations = question.translations?.[language] || {};
   const options = (translations.options && translations.options.length > 0)
     ? translations.options
     : (question.options || []);
+
+  const handleSelect = (index) => {
+    setSelectedOption(index);
+    onChange?.(index);
+  };
+
+  useEffect(() => {
+    setSelectedOption(value ?? null);
+  }, [value]);
 
   return (
     <div className="multiple-choice-single-renderer">
@@ -14,7 +23,7 @@ const MultipleChoiceSingleRenderer = ({ question, language }) => {
           <button
             key={index}
             className={`pill-button ${selectedOption === index ? 'selected' : ''}`}
-            onClick={() => setSelectedOption(index)}
+            onClick={() => handleSelect(index)}
           >
             {option.text}
           </button>

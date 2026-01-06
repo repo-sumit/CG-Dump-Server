@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const CalendarRenderer = ({ question }) => {
-  const [selectedDate, setSelectedDate] = useState('');
+const CalendarRenderer = ({ question, value, onChange }) => {
+  const [selectedDate, setSelectedDate] = useState(value || '');
+
+  useEffect(() => {
+    setSelectedDate(value || '');
+  }, [value]);
 
   return (
     <div className="calendar-renderer">
@@ -9,7 +13,10 @@ const CalendarRenderer = ({ question }) => {
         type="date"
         className="preview-date-input"
         value={selectedDate}
-        onChange={(e) => setSelectedDate(e.target.value)}
+        onChange={(e) => {
+          setSelectedDate(e.target.value);
+          onChange?.(e.target.value);
+        }}
       />
     </div>
   );

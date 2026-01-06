@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TabularTextInputRenderer = ({ question, language }) => {
+const TabularTextInputRenderer = ({ question, language, onAnswer }) => {
   const translations = question.translations?.[language] || {};
   const tableHeaderValue = translations.tableHeaderValue || question.tableHeaderValue || '';
   const tableQuestionValue = translations.tableQuestionValue || question.tableQuestionValue || '';
@@ -41,6 +41,7 @@ const TabularTextInputRenderer = ({ question, language }) => {
                     type="text" 
                     className="preview-text-input"
                     placeholder="Enter text"
+                    onChange={() => onAnswer?.(question.questionId, { value: true, answered: true })}
                   />
                 </td>
               ))}

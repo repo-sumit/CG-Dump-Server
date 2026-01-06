@@ -1,6 +1,6 @@
 import React from 'react';
 
-const MediaUploadRenderer = ({ question }) => {
+const MediaUploadRenderer = ({ question, onChange }) => {
   const questionType = question.questionType;
   
   let acceptTypes = '*';
@@ -30,6 +30,7 @@ const MediaUploadRenderer = ({ question }) => {
           type="file"
           accept={acceptTypes}
           className="upload-input"
+          onChange={(e) => onChange?.(e.target.files?.[0] || null)}
         />
       </div>
     </div>

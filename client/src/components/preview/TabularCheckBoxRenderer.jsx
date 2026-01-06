@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const TabularCheckBoxRenderer = ({ question, language }) => {
+const TabularCheckBoxRenderer = ({ question, language, onAnswer }) => {
   const [selections, setSelections] = useState({});
   const translations = question.translations?.[language] || {};
   const tableHeaderValue = translations.tableHeaderValue || question.tableHeaderValue || '';
@@ -27,6 +27,7 @@ const TabularCheckBoxRenderer = ({ question, language }) => {
       ...prev,
       [key]: !prev[key]
     }));
+    onAnswer?.(question.questionId, { value: true, answered: true });
   };
 
   return (
