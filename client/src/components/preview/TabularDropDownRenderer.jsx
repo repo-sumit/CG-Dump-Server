@@ -14,8 +14,9 @@ const TabularDropDownRenderer = ({ question, language, onAnswer }) => {
     return value.split(delimiter).map((header) => header.trim()).filter(Boolean);
   };
   
-  // Parse table headers and questions
   const tableHeaders = parseHeaders(tableHeaderValue);
+  const headerOne = tableHeaders[0] || 'Option No';
+  const headerTwo = tableHeaders[1] || 'Select Option';
   const tableQuestions = tableQuestionValue?.split('\n')
     .map(line => {
       const [key, value] = line.split(':');
@@ -28,31 +29,27 @@ const TabularDropDownRenderer = ({ question, language, onAnswer }) => {
       <table className="preview-table">
         <thead>
           <tr>
-            <th></th>
-            {tableHeaders.map((header, idx) => (
-              <th key={idx}>{header}</th>
-            ))}
+            <th>{headerOne}</th>
+            <th>{headerTwo}</th>
           </tr>
         </thead>
         <tbody>
           {tableQuestions.map((tq, idx) => (
             <tr key={idx}>
               <td className="row-label">{tq.value}</td>
-              {tableHeaders.map((_, colIdx) => (
-                <td key={colIdx}>
-                  <select
-                    className="preview-dropdown"
-                    onChange={() => onAnswer?.(question.questionId, { value: true, answered: true })}
-                  >
-                    <option value="">Select...</option>
-                    {options.map((opt, optIdx) => (
-                      <option key={optIdx} value={opt.text}>
-                        {opt.text}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-              ))}
+              <td>
+                <select
+                  className="preview-dropdown"
+                  onChange={() => onAnswer?.(question.questionId, { value: true, answered: true })}
+                >
+                  <option value="">Select...</option>
+                  {options.map((opt, optIdx) => (
+                    <option key={optIdx} value={opt.text}>
+                      {opt.text}
+                    </option>
+                  ))}
+                </select>
+              </td>
             </tr>
           ))}
         </tbody>
