@@ -12,7 +12,7 @@ const TabularTextInputRenderer = ({ question, language, onAnswer }) => {
   };
 
   // Parse table headers and questions
-  const tableHeaders = parseHeaders(tableHeaderValue);
+  const tableHeaders = ['Option No', 'Text Input'];
   const tableQuestions = tableQuestionValue?.split('\n')
     .map(line => {
       const [key, value] = line.split(':');
@@ -26,25 +26,30 @@ const TabularTextInputRenderer = ({ question, language, onAnswer }) => {
         <thead>
           <tr>
             <th></th>
-            {tableHeaders.map((header, idx) => (
-              <th key={idx}>{header}</th>
-            ))}
+            <th>{tableHeaders[0]}</th>
+            <th>{tableHeaders[1]}</th>
           </tr>
         </thead>
         <tbody>
           {tableQuestions.map((tq, idx) => (
             <tr key={idx}>
               <td className="row-label">{tq.value}</td>
-              {tableHeaders.map((_, colIdx) => (
-                <td key={colIdx}>
-                  <input 
-                    type="text" 
-                    className="preview-text-input"
-                    placeholder="Enter text"
-                    onChange={() => onAnswer?.(question.questionId, { value: true, answered: true })}
-                  />
-                </td>
-              ))}
+              <td>
+                <input 
+                  type="text" 
+                  className="preview-text-input"
+                  placeholder="Enter text"
+                  onChange={() => onAnswer?.(question.questionId, { value: true, answered: true })}
+                />
+              </td>
+              <td>
+                <input 
+                  type="text" 
+                  className="preview-text-input"
+                  placeholder="Enter text"
+                  onChange={() => onAnswer?.(question.questionId, { value: true, answered: true })}
+                />
+              </td>
             </tr>
           ))}
         </tbody>
