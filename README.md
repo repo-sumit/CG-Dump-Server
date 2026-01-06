@@ -29,8 +29,3 @@ npm start
 ```
 
 Frontend runs at `http://localhost:3000`.
-
-
-
-- Storage is JSON file-based for simplicity.
-- For production: migrate to a database, add auth, and move Tailwind/Bootstrap to build-time bundles.
