@@ -27,7 +27,7 @@ A comprehensive web application for creating and managing surveys with automatic
 - **HTTP Client**: Axios
 - **Storage**: JSON file-based storage
 
-![Home Page](https://i.ibb.co/gFVwftt6/Screenshot-2026-01-14-000050.png)
+![Home Page](https://i.ibb.co/hRC7n6tt/Screenshot-2026-01-14-000135.png)
 
 ## Project Structure
 
@@ -148,7 +148,6 @@ The application will open in your browser at `http://localhost:3000`
 
 The system supports creating questions in multiple languages with automatic Excel export row duplication.
 
-![Multi-Language Translation Panel](https://i.ibb.co/hRC7n6tt/Screenshot-2026-01-14-000135.png)
 
 #### Adding Multi-Language Questions
 
