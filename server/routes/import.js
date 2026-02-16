@@ -383,6 +383,7 @@ router.post('/', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
     
+    const overwrite = String(req.query.overwrite || '').toLowerCase() === 'true';
     filePath = req.file.path;
     const fileExt = path.extname(req.file.originalname).toLowerCase();
     
@@ -415,10 +416,32 @@ router.post('/', upload.single('file'), async (req, res) => {
     // Validate imported data
     const errors = [];
     const store = await readStore();
+    const incomingSurveyIds = new Set(importData.surveys.map((survey) => survey.surveyId));
+    const duplicateSurveyIds = store.surveys
+      .filter((survey) => incomingSurveyIds.has(survey.surveyId))
+      .map((survey) => survey.surveyId);
 
-    // Allow re-import by removing existing surveys with matching IDs
-    if (importData.surveys.length > 0) {
-      const incomingSurveyIds = new Set(importData.surveys.map((survey) => survey.surveyId));
+    if (duplicateSurveyIds.length > 0 && !overwrite) {
+      return res.status(400).json({
+        error: 'Duplicate survey IDs found',
+        message: 'Import rejected because one or more Survey IDs already exist. Retry with overwrite=true to replace existing surveys.',
+        details: [
+          {
+            field: 'surveyId',
+            duplicates: [...new Set(duplicateSurveyIds)]
+          }
+        ],
+        validationErrors: duplicateSurveyIds.map((surveyId) => ({
+          type: 'survey',
+          surveyId,
+          errors: ['Survey ID already exists in the system']
+        })),
+        surveysCount: importData.surveys.length,
+        questionsCount: importData.questions.length
+      });
+    }
+
+    if (duplicateSurveyIds.length > 0 && overwrite) {
       store.surveys = store.surveys.filter((survey) => !incomingSurveyIds.has(survey.surveyId));
       store.questions = store.questions.filter((question) => !incomingSurveyIds.has(question.surveyId));
     }
@@ -438,8 +461,8 @@ router.post('/', upload.single('file'), async (req, res) => {
         });
       }
       
-      // Check for duplicate survey IDs
-      if (store.surveys.find(s => s.surveyId === survey.surveyId)) {
+      // Check for duplicate survey IDs when overwrite is not enabled
+      if (!overwrite && store.surveys.find(s => s.surveyId === survey.surveyId)) {
         errors.push({
           type: 'survey',
           index: index + 1,
@@ -478,6 +501,7 @@ router.post('/', upload.single('file'), async (req, res) => {
     
     res.status(201).json({
       message: 'Import successful',
+      overwrite,
       surveysImported: importData.surveys.length,
       questionsImported: importData.questions.length,
       surveys: importData.surveys

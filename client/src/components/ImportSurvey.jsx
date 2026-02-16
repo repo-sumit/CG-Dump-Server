@@ -8,6 +8,7 @@ const ImportSurvey = () => {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState(null);
   const [errors, setErrors] = useState(null);
+  const [overwrite, setOverwrite] = useState(false);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -38,7 +39,8 @@ const ImportSurvey = () => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await axios.post('/api/import', formData, {
+      const importUrl = overwrite ? '/api/import?overwrite=true' : '/api/import';
+      const response = await axios.post(importUrl, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -88,8 +90,22 @@ const ImportSurvey = () => {
             <li>Or upload separate CSV files for Survey Master or Question Master</li>
             <li>Multi-language surveys are supported - questions with the same Survey_ID, Question_ID, and Question_Type will be grouped</li>
             <li>All data will be validated before import</li>
-            <li>Existing surveys with the same Survey ID will cause an error</li>
+            <li>By default, existing Survey IDs are rejected to prevent accidental data loss</li>
+            <li>Enable overwrite only when you want to replace existing surveys and their questions</li>
           </ul>
+        </div>
+
+        <div className="form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="checkbox"
+              checked={overwrite}
+              onChange={(e) => setOverwrite(e.target.checked)}
+              disabled={importing}
+            />
+            Overwrite existing surveys with matching Survey IDs
+          </label>
+          <small>Unchecked: duplicates are rejected. Checked: matching surveys and questions are replaced.</small>
         </div>
 
         <div className="form-group">
