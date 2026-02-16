@@ -62,7 +62,7 @@ class ValidationEngine {
       },
       availableMediums: {
         type: 'required',
-        enum: AVAILABLE_MEDIUMS,
+        custom: 'availableMediums',
         message: `Available Mediums must be from: ${AVAILABLE_MEDIUMS.join(', ')}`
       },
       hierarchicalAccessLevel: {
@@ -240,9 +240,7 @@ class ValidationEngine {
         // Validate medium matches survey's available mediums
         const survey = surveys.find(s => s.surveyId === questionData.surveyId);
         if (survey && questionData.medium) {
-          const surveyMediums = typeof survey.availableMediums === 'string'
-            ? survey.availableMediums.split(',').map(m => m.trim())
-            : survey.availableMediums || [];
+          const { values: surveyMediums } = this._parseMediumList(survey.availableMediums);
           
           if (!surveyMediums.includes(questionData.medium)) {
             errors.push({
@@ -440,6 +438,27 @@ class ValidationEngine {
       }
     }
 
+    if (rule.custom === 'availableMediums') {
+      const parseResult = this._parseMediumList(value);
+      parseResult.errors.forEach((message) => {
+        errors.push({
+          field,
+          message,
+          value
+        });
+      });
+
+      parseResult.values.forEach((medium) => {
+        if (!AVAILABLE_MEDIUMS.includes(medium)) {
+          errors.push({
+            field,
+            message: rule.message,
+            value: medium
+          });
+        }
+      });
+    }
+
     return errors;
   }
 
@@ -566,6 +585,40 @@ class ValidationEngine {
       return `Q${trimmed}`;
     }
     return trimmed;
+  }
+
+  _parseMediumList(value) {
+    let rawValues = [];
+    const errors = [];
+    let hasEmptyValue = false;
+
+    if (Array.isArray(value)) {
+      rawValues = value;
+    } else if (typeof value === 'string') {
+      rawValues = value.split(',');
+    } else if (value !== undefined && value !== null) {
+      rawValues = [value];
+    }
+
+    const values = [];
+    rawValues.forEach((medium) => {
+      const normalized = String(medium || '').trim();
+      if (!normalized) {
+        hasEmptyValue = true;
+        return;
+      }
+      values.push(normalized);
+    });
+
+    if (hasEmptyValue) {
+      errors.push('Available Mediums must not contain empty values');
+    }
+
+    if (values.length === 0) {
+      errors.push('Available Mediums must include at least one medium');
+    }
+
+    return { values, errors };
   }
 
   _parseChildList(value) {
