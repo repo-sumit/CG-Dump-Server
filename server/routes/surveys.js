@@ -3,6 +3,20 @@ const router = express.Router();
 const validator = require('../services/validator');
 const { readStore, writeStore } = require('../data/store');
 
+function normalizeQuestionId(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) {
+    return '';
+  }
+  if (/^q/i.test(trimmed)) {
+    return `Q${trimmed.slice(1)}`;
+  }
+  if (/^\d+(\.\d+)*$/.test(trimmed)) {
+    return `Q${trimmed}`;
+  }
+  return trimmed;
+}
+
 // GET /api/surveys - List all surveys
 router.get('/', async (req, res) => {
   try {
@@ -365,6 +379,7 @@ router.post('/:id/duplicate', async (req, res) => {
 router.post('/:surveyId/questions/:questionId/duplicate', async (req, res) => {
   try {
     const { surveyId, questionId } = req.params;
+    const requestedQuestionId = normalizeQuestionId(req.body?.newQuestionId);
     
     const store = await readStore();
     
@@ -377,22 +392,34 @@ router.post('/:surveyId/questions/:questionId/duplicate', async (req, res) => {
       return res.status(404).json({ error: 'Question not found' });
     }
     
-    // Generate new question ID
-    const surveyQuestions = store.questions.filter(q => q.surveyId === surveyId);
-    const questionNumbers = surveyQuestions
-      .map(q => {
-        const match = q.questionId.match(/^Q(\d+)(?:\.(\d+))?$/);
-        if (match) {
-          return parseInt(match[1]);
-        }
-        return 0;
-      })
-      .filter(n => n > 0);
-    
-    const maxQuestionNum = questionNumbers.length > 0 
-      ? questionNumbers.reduce((max, num) => Math.max(max, num), 0) 
-      : 0;
-    const newQuestionId = `Q${maxQuestionNum + 1}`;
+    let newQuestionId = requestedQuestionId;
+
+    if (newQuestionId) {
+      if (!/^Q\d+(\.\d+)*$/.test(newQuestionId)) {
+        return res.status(400).json({
+          error: 'Invalid Question ID format',
+          message: 'newQuestionId must be in format Q1, Q1.1, Q2, etc.',
+          details: [{ field: 'newQuestionId', value: requestedQuestionId }]
+        });
+      }
+    } else {
+      // Generate new question ID when not explicitly provided
+      const surveyQuestions = store.questions.filter(q => q.surveyId === surveyId);
+      const questionNumbers = surveyQuestions
+        .map(q => {
+          const match = q.questionId.match(/^Q(\d+)(?:\.(\d+))?$/);
+          if (match) {
+            return parseInt(match[1], 10);
+          }
+          return 0;
+        })
+        .filter(n => n > 0);
+
+      const maxQuestionNum = questionNumbers.length > 0
+        ? questionNumbers.reduce((max, num) => Math.max(max, num), 0)
+        : 0;
+      newQuestionId = `Q${maxQuestionNum + 1}`;
+    }
     
     // Create duplicated question
     const duplicatedQuestion = {
@@ -402,9 +429,13 @@ router.post('/:surveyId/questions/:questionId/duplicate', async (req, res) => {
       optionChildren: originalQuestion.optionChildren || ''
     };
     
-    // Check if new question ID already exists (shouldn't happen, but safety check)
+    // Check if new question ID already exists
     if (store.questions.find(q => q.surveyId === surveyId && q.questionId === newQuestionId)) {
-      return res.status(400).json({ error: 'Generated question ID already exists' });
+      return res.status(400).json({
+        error: 'Question ID already exists',
+        message: `Question ID "${newQuestionId}" already exists for this survey`,
+        details: [{ field: 'newQuestionId', value: newQuestionId }]
+      });
     }
     
     // Validate duplicated question

@@ -69,9 +69,14 @@ export const questionAPI = {
 
   // Duplicate question
   duplicate: async (surveyId, questionId, newQuestionId) => {
-    const response = await axios.post(`${API_BASE_URL}/surveys/${surveyId}/questions/${questionId}/duplicate`, {
-      newQuestionId
-    });
+    const payload = {};
+    if (newQuestionId) {
+      payload.newQuestionId = newQuestionId;
+    }
+    const response = await axios.post(
+      `${API_BASE_URL}/surveys/${surveyId}/questions/${questionId}/duplicate`,
+      payload
+    );
     return response.data;
   }
 };
