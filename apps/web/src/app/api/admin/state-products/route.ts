@@ -1,7 +1,7 @@
 import { setStateProductEnablement } from "@cg-dump/core";
 import { SetStateProductSchema } from "@cg-dump/shared";
 
-import { withAuth } from "@/server/auth";
+import { requireAdmin } from "@/server/auth";
 import { err, ok, withErrorBoundary } from "@/server/http";
 import { rateLimit } from "@/server/rate-limit";
 
@@ -12,7 +12,7 @@ export async function PUT(request: Request) {
     const limited = rateLimit(request, "admin:state-products", 40);
     if (limited) return limited;
 
-    const auth = await withAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
     const body = await request.json();

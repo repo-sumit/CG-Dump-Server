@@ -18,6 +18,7 @@ export type AuthContext = {
   role: UserRole;
   cognitoSub: string;
   groups: string[];
+  tokenStateId: string | null;
   user: {
     id: string;
     role: UserRole;
@@ -26,6 +27,53 @@ export type AuthContext = {
     email: string | null;
   };
 };
+
+function getTokenStateClaim(payload: JWTPayload): string | null {
+  const candidates = [
+    payload["custom:state_id"],
+    payload["state_id"],
+    payload["stateId"],
+    payload["custom:state_code"],
+    payload["state_code"]
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null) {
+      continue;
+    }
+    const value = String(candidate).trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+async function resolveStateIdFromTokenClaim(stateClaim: string): Promise<string | null> {
+  const claim = stateClaim.trim();
+  if (!claim) {
+    return null;
+  }
+
+  const byId = await prisma.state.findUnique({
+    where: { id: claim },
+    select: { id: true }
+  });
+  if (byId) {
+    return byId.id;
+  }
+
+  const byCode = await prisma.state.findUnique({
+    where: { code: claim.toUpperCase() },
+    select: { id: true }
+  });
+  if (byCode) {
+    return byCode.id;
+  }
+
+  return null;
+}
 
 async function resolveDevStateId(request: Request): Promise<string> {
   const rawCode = request.headers.get("x-dev-state") || "DEV_STATE";
@@ -116,6 +164,7 @@ export async function requireAuth(
         role,
         cognitoSub: sub,
         groups: [role],
+        tokenStateId: stateId,
         user: {
           id: user.id,
           role: user.role,
@@ -151,6 +200,17 @@ export async function requireAuth(
     return { ok: false, status: 403, error: "Forbidden", details: { message: "Role is missing in Cognito groups claim" } };
   }
 
+  const tokenStateClaim = getTokenStateClaim(payload);
+  const tokenStateId = tokenStateClaim ? await resolveStateIdFromTokenClaim(tokenStateClaim) : null;
+  if (role === "state_user" && !tokenStateId) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Forbidden",
+      details: { message: "state_id claim is missing or invalid in token" }
+    };
+  }
+
   if (!ensureRole(expectedRole, role)) {
     return { ok: false, status: 403, error: "Forbidden", details: { role } };
   }
@@ -181,6 +241,22 @@ export async function requireAuth(
       details: { message: "User is missing required state assignment" }
     };
   }
+  if (user.role !== role) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Forbidden",
+      details: { message: "User role does not match Cognito token role" }
+    };
+  }
+  if (tokenStateId && user.stateId !== tokenStateId) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Forbidden",
+      details: { message: "User state assignment does not match token state_id claim" }
+    };
+  }
 
   return {
     ok: true,
@@ -188,6 +264,7 @@ export async function requireAuth(
       role,
       cognitoSub,
       groups,
+      tokenStateId,
       user: {
         id: user.id,
         role: user.role,

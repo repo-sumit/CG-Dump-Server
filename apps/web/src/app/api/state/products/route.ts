@@ -1,18 +1,14 @@
 import { listEnabledProductsForState } from "@cg-dump/core";
 
-import { withAuth } from "@/server/auth";
+import { requireStateUser } from "@/server/auth";
 import { ok, withErrorBoundary } from "@/server/http";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   return withErrorBoundary(async () => {
-    const auth = await withAuth(request, ["admin", "state_user"]);
+    const auth = await requireStateUser(request);
     if (!auth.ok) return auth.response;
-
-    if (auth.context.role === "admin") {
-      return ok([]);
-    }
 
     const rows = await listEnabledProductsForState(auth.context.user.stateId);
     return ok(

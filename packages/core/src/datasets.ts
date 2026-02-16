@@ -20,6 +20,16 @@ function assertStateAccess(context: AuthContext, stateId: string) {
   }
 }
 
+function scopedDatasetWhere(context: AuthContext, datasetId: string) {
+  if (isAdmin(context)) {
+    return { id: datasetId };
+  }
+  return {
+    id: datasetId,
+    stateId: context.user.stateId
+  };
+}
+
 async function assertProductEnabledForState(stateId: string, productId: string) {
   const enabled = await prisma.stateProduct.findFirst({
     where: {
@@ -145,8 +155,8 @@ export async function listDatasets(context: AuthContext, filters: DatasetFilters
 }
 
 export async function getDataset(context: AuthContext, datasetId: string) {
-  const dataset = await prisma.dataset.findUnique({
-    where: { id: datasetId },
+  const dataset = await prisma.dataset.findFirst({
+    where: scopedDatasetWhere(context, datasetId),
     include: {
       rows: {
         orderBy: { rowIndex: "asc" }
@@ -167,8 +177,8 @@ export async function getDataset(context: AuthContext, datasetId: string) {
 }
 
 export async function updateDatasetRows(context: AuthContext, datasetId: string, input: UpdateDatasetRowsInput) {
-  const dataset = await prisma.dataset.findUnique({
-    where: { id: datasetId },
+  const dataset = await prisma.dataset.findFirst({
+    where: scopedDatasetWhere(context, datasetId),
     include: {
       rows: true,
       template: true
@@ -178,6 +188,9 @@ export async function updateDatasetRows(context: AuthContext, datasetId: string,
     throw new DomainError(404, "Dataset not found");
   }
   assertStateAccess(context, dataset.stateId);
+  if (!isAdmin(context)) {
+    await assertProductEnabledForState(dataset.stateId, dataset.productId);
+  }
 
   if (dataset.version !== input.version) {
     throw new DomainError(409, "Dataset version mismatch", {

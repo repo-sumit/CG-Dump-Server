@@ -20,3 +20,11 @@ export async function withAuth(
   }
   return { ok: true, context: auth.context };
 }
+
+export async function requireAdmin(request: Request) {
+  return withAuth(request, "admin");
+}
+
+export async function requireStateUser(request: Request) {
+  return withAuth(request, "state_user");
+}

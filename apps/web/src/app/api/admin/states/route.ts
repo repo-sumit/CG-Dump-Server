@@ -1,7 +1,7 @@
 import { createState } from "@cg-dump/core";
 import { CreateStateSchema } from "@cg-dump/shared";
 
-import { withAuth } from "@/server/auth";
+import { requireAdmin } from "@/server/auth";
 import { err, ok, withErrorBoundary } from "@/server/http";
 import { rateLimit } from "@/server/rate-limit";
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const limited = rateLimit(request, "admin:states", 30);
     if (limited) return limited;
 
-    const auth = await withAuth(request, "admin");
+    const auth = await requireAdmin(request);
     if (!auth.ok) return auth.response;
 
     const body = await request.json();
