@@ -1,16 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs').promises;
-const path = require('path');
 const excelGenerator = require('../services/excelGenerator');
-
-const STORE_PATH = path.join(__dirname, '../data/store.json');
-
-// Read store
-async function readStore() {
-  const data = await fs.readFile(STORE_PATH, 'utf8');
-  return JSON.parse(data);
-}
+const { readStore } = require('../data/store');
 
 // GET /api/export/:surveyId - Export survey to Excel
 router.get('/:surveyId', async (req, res) => {

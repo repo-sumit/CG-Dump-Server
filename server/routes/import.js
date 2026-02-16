@@ -3,26 +3,20 @@ const router = express.Router();
 const multer = require('multer');
 const ExcelJS = require('exceljs');
 const { parse } = require('csv-parse/sync');
-const fs = require('fs').promises;
+const fsp = require('fs').promises;
 const path = require('path');
 const validator = require('../services/validator');
+const { readStore, writeStore, ensureUploadsDir, UPLOAD_DIR } = require('../data/store');
 
-const STORE_PATH = path.join(__dirname, '../data/store.json');
-const UPLOAD_DIR = path.join(__dirname, '../uploads');
-
-// Configure multer for file upload
-const upload = multer({ dest: UPLOAD_DIR });
-
-// Read store
-async function readStore() {
-  const data = await fs.readFile(STORE_PATH, 'utf8');
-  return JSON.parse(data);
-}
-
-// Write store
-async function writeStore(data) {
-  await fs.writeFile(STORE_PATH, JSON.stringify(data, null, 2));
-}
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      ensureUploadsDir()
+        .then(() => cb(null, UPLOAD_DIR))
+        .catch((error) => cb(error));
+    }
+  })
+});
 
 // Helper function to parse XLSX file
 async function parseXLSX(filePath) {
@@ -124,7 +118,7 @@ async function parseXLSX(filePath) {
 
 // Helper function to parse CSV file
 async function parseCSV(filePath, sheetType) {
-  const fileContent = await fs.readFile(filePath, 'utf8');
+  const fileContent = await fsp.readFile(filePath, 'utf8');
   const records = parse(fileContent, {
     columns: true,
     skip_empty_lines: true,
@@ -517,7 +511,7 @@ router.post('/', upload.single('file'), async (req, res) => {
     // Clean up uploaded file
     if (filePath) {
       try {
-        await fs.unlink(filePath);
+        await fsp.unlink(filePath);
       } catch (err) {
         console.error('Failed to delete uploaded file:', err);
       }

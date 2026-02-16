@@ -1,31 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const fs = require('fs').promises;
-const path = require('path');
 const validator = require('../services/validator');
-
-const STORE_PATH = path.join(__dirname, '../data/store.json');
-
-// Initialize store if it doesn't exist
-async function initStore() {
-  try {
-    await fs.access(STORE_PATH);
-  } catch {
-    await fs.writeFile(STORE_PATH, JSON.stringify({ surveys: [], questions: [] }, null, 2));
-  }
-}
-
-// Read store
-async function readStore() {
-  await initStore();
-  const data = await fs.readFile(STORE_PATH, 'utf8');
-  return JSON.parse(data);
-}
-
-// Write store
-async function writeStore(data) {
-  await fs.writeFile(STORE_PATH, JSON.stringify(data, null, 2));
-}
+const { readStore, writeStore } = require('../data/store');
 
 // GET /api/surveys - List all surveys
 router.get('/', async (req, res) => {
