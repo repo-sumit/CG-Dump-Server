@@ -5,7 +5,7 @@ AWS-deployable fullstack platform for multi-tenant dump sheet workflows.
 ## Architecture
 
 ```text
-fmb-survey-builder/
+CG-Dump-Server/
   apps/
     web/                    # Next.js app router (UI + API routes)
   packages/
